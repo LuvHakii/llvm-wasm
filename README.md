@@ -34,9 +34,17 @@ Never build under `/tmp` — it is tmpfs on the dev box, so a build there consum
 ## Build
 
 ```bash
-scripts/build-clangd.sh      # stage2: clangd (+ clang/lld from the same tree)
-scripts/gen-pch.sh           # precompiled headers, one per -std
+scripts/setup.sh             # sources, emsdk, wasi-sysroot, native tblgen
+scripts/build-clangd.sh      # stage2: clangd
+scripts/build-clang.sh       # clang + wasm-ld from the same tree
+# PCHs: node scripts/browser-test/run.mjs ./dist "/pch.html?std=c%2B%2B20" (per std)
 ```
+
+PCHs are generated **by the built `clang.wasm` itself** in Chromium — clang
+validates a PCH against the exact compiler build, so host-generated PCHs
+(e.g. from wasi-sdk's clang) are rejected at `-include-pch` time. CI
+(`.github/workflows/build.yml`) runs the whole chain and gates releases on
+the browser harnesses.
 
 `JOBS` defaults to 8 rather than nproc, and `LLVM_PARALLEL_LINK_JOBS=1` is forced:
 LLVM link steps are memory-hungry and the dev box has ~10 GB free.
@@ -100,10 +108,10 @@ per-file cap.
 cuts it to 25 MB and takes the wasm from 180.5 MiB to 61.2 MiB (gzip 31.6 → 14.7).
 Dropping clang-tidy from clangd saved only a further ~2 MiB by comparison.
 
-Node cannot host this build: `ENVIRONMENT=worker` plus pthreads needs a Web `Worker`
-global, so `node scripts/test-clangd.mjs` fails with `Worker is not defined`. Use
-`node scripts/browser-test/run.mjs` instead, which serves `dist/` with COOP/COEP and
-drives real Chromium.
+Node cannot host these builds: `ENVIRONMENT=worker` plus pthreads needs a Web
+`Worker` global (`Worker is not defined`). All testing goes through
+`node scripts/browser-test/run.mjs`, which serves `dist/` with COOP/COEP and drives
+real Chromium.
 
 Two things that fail *silently* if wrong:
 - **Include paths.** libc++ is at `include/wasm32-wasi/eh/c++/v1`, not `include/c++/v1`.
@@ -132,9 +140,12 @@ Full pipeline on `<bits/stdc++.h>` + `sort` + iostream + `throw`/`catch`:
 
 Four things that were required and are not obvious:
 
-1. **`wasm-ld --threads=1`.** Without it lld's multithreaded output writer **crashes the
-   page** with no error, but only once it gets far enough to actually write output - an
-   early error exit looks fine, which makes this easy to misdiagnose.
+1. **`wasm-ld --threads=1`.** lld is linked with `-pthread` but no
+   `PTHREAD_POOL_SIZE`, so any attempt to spawn a thread finds an empty worker pool
+   and **crashes the page** with no error - and only once lld gets far enough to
+   write output, so an early error exit looks fine. `--threads=1` avoids thread
+   creation entirely. If parallel linking ever matters (it does not: links are
+   ~0.4s), add a pool at link time instead of just raising the flag.
 2. **`-lclang_rt.builtins`.** Otherwise `undefined symbol: __multi3`. It is a separate
    wasi-sdk release asset (`libclang_rt-33.0+m.tar.gz`), not part of the sysroot tarball.
 3. **`-mllvm -wasm-use-legacy-eh=false`.** Our clang 21 defaults to legacy EH while
