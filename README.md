@@ -82,6 +82,35 @@ Trimming the shim is not worth it: base PCH overhead is 0.11 MiB, but `<vector>`
 is 7.87 MiB and `<iostream>` 10.08 MiB. The ~10 MiB floor is libc++'s core templates.
 All 72 headers beyond a minimal competitive-programming set total only 5 MiB.
 
+### clangd, verified in headless Chromium
+
+| metric | measured |
+|---|---|
+| module instantiate | 1.6 s |
+| `initialize` | 25 ms |
+| diagnostics | 25 ms, 0 errors on a `<bits/stdc++.h>` program |
+| completion (warm) | 276 ms, 40 real `std::vector` members |
+| preamble (cold, once) | 9.3 s, 24.5 MB |
+
+`clangd.wasm` is 61.2 MiB raw / **14.7 MiB gzipped**, under Cloudflare Pages' 25 MiB
+per-file cap.
+
+**The sysroot dominates the binary.** wasi-sdk ships five target triples, each with
+`eh` and `noeh` libc++ copies — 173 MB of headers. Keeping only `wasm32-wasi/eh`
+cuts it to 25 MB and takes the wasm from 180.5 MiB to 61.2 MiB (gzip 31.6 → 14.7).
+Dropping clang-tidy from clangd saved only a further ~2 MiB by comparison.
+
+Node cannot host this build: `ENVIRONMENT=worker` plus pthreads needs a Web `Worker`
+global, so `node scripts/test-clangd.mjs` fails with `Worker is not defined`. Use
+`node scripts/browser-test/run.mjs` instead, which serves `dist/` with COOP/COEP and
+drives real Chromium.
+
+Two things that fail *silently* if wrong:
+- **Include paths.** libc++ is at `include/wasm32-wasi/eh/c++/v1`, not `include/c++/v1`.
+  Get this wrong and clangd degrades to identifier-based completion with no error.
+- **stdin chunking.** Feed discrete chunks each followed by a `null`, not a continuous
+  byte stream. Streaming leaves clangd blocked with zero stdout.
+
 ### Runtime behaviour (verified under Node 24 `node:wasi`)
 
 | feature | result |
