@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>clangd harness</title></head>
+<body>
+<pre id="log">starting…</pre>
+<script type="module">
+const log = m => { document.getElementById('log').textContent += '\n' + m; console.log(m); };
+window.__done = null;
+window.__result = null;
+
+const WORKSPACE = '/src';
+const FILE = `${WORKSPACE}/main.cpp`;
+const SOURCE = `#include <bits/stdc++.h>\nusing namespace std;\nint main() {\n  vector<int> v{3,1,2};\n  v.\n  return 0;\n}\n`;
+
+const enc = new TextEncoder(), dec = new TextDecoder();
+const stdinChunks = [];
+const currentChunk = [];
+let stdoutBytes = 0;
+let resolveStdin = () => {};
+let buf = new Uint8Array(0);
+const inbox = [];
+
+function deframe(chunk) {
+	const n = new Uint8Array(buf.length + chunk.length);
+	n.set(buf, 0); n.set(chunk, buf.length); buf = n;
+	for (;;) {
+		let end = -1;
+		for (let i = 0; i + 3 < buf.length; i++)
+			if (buf[i] === 13 && buf[i+1] === 10 && buf[i+2] === 13 && buf[i+3] === 10) { end = i; break; }
+		if (end < 0) return;
+		const m = /content-length:\s*(\d+)/i.exec(dec.decode(buf.subarray(0, end)));
+		if (!m) { buf = buf.subarray(end + 4); continue; }
+		const len = Number(m[1]), start = end + 4;
+		if (buf.length - start < len) return;
+		inbox.push(JSON.parse(dec.decode(buf.subarray(start, start + len))));
+		buf = buf.subarray(start + len);
+	}
+}
+function send(o) {
+	const body = JSON.stringify(o);
+	const len = enc.encode(body).length;
+	stdinChunks.push(`Content-Length: ${len}\r\n`, '\r\n', body);
+	resolveStdin();
+}
+function readStdin() {
+	if (currentChunk.length === 0) {
+		if (stdinChunks.length === 0) return null;
+		currentChunk.push(...enc.encode(stdinChunks.shift()), null);
+	}
+	return currentChunk.shift();
+}
+const waitFor = async (pred, label, ms = 60000) => {
+	const dl = performance.now() + ms;
+	for (;;) {
+		const hit = inbox.find(pred);
+		if (hit) return hit;
+		if (performance.now() > dl) throw new Error('timeout: ' + label + ` (stdoutBytes=${stdoutBytes})`);
+		await new Promise(r => setTimeout(r, 25));
+	}
+};
+
+try {
+	log('crossOriginIsolated=' + self.crossOriginIsolated);
+	const t0 = performance.now();
+	const {default: Clangd} = await import('./clangd.js');
+	let pending = [];
+	let errLine = '';
+	let stdoutBytes = 0;
+	const clangd = await Clangd({
+		thisProgram: '/usr/bin/clangd',
+		stdinReady: async () => { if (!stdinChunks.length) return new Promise(r => (resolveStdin = r)); },
+		stdin: readStdin,
+		stdout: c => { stdoutBytes++; pending.push(c); queueMicrotask(() => { if (pending.length) { deframe(Uint8Array.from(pending)); pending = []; } }); },
+		stderr: c => { errLine += String.fromCharCode(c); if (c === 10) { log('[stderr] ' + errLine.trim()); errLine = ''; } },
+		onExit: () => log('clangd exited'),
+		onAbort: w => log('clangd aborted: ' + w)
+	});
+	const tInst = performance.now() - t0;
+	log(`instantiated in ${tInst.toFixed(0)}ms`);
+
+	clangd.FS.mkdir(WORKSPACE);
+	clangd.FS.writeFile(FILE, SOURCE);
+	clangd.FS.writeFile(`${WORKSPACE}/.clangd`, JSON.stringify({CompileFlags: {Add: [
+		'--target=wasm32-wasi', '-std=c++20', '-fwasm-exceptions',
+		'-isystem/usr/include/wasm32-wasi/eh/c++/v1', '-isystem/usr/include/c++/v1',
+		'-isystem/usr/include/wasm32-wasi', '-isystem/usr/include'
+	]}}));
+	clangd.callMain(['--background-index=false']);
+
+	setTimeout(() => log(`stdout bytes after 5s: ${stdoutBytes}, inbox: ${inbox.length}`), 5000);
+	const t1 = performance.now();
+	send({jsonrpc:'2.0', id:1, method:'initialize', params:{processId:null, rootUri:`file://${WORKSPACE}`, capabilities:{}}});
+	await waitFor(m => m.id === 1, 'initialize');
+	const tInit = performance.now() - t1;
+	log(`initialize: ${tInit.toFixed(0)}ms`);
+	send({jsonrpc:'2.0', method:'initialized', params:{}});
+	send({jsonrpc:'2.0', method:'textDocument/didOpen', params:{textDocument:{uri:`file://${FILE}`, languageId:'cpp', version:1, text:SOURCE}}});
+
+	const t2 = performance.now();
+	const diag = await waitFor(m => m.method === 'textDocument/publishDiagnostics', 'diagnostics');
+	const tDiag = performance.now() - t2;
+	log(`diagnostics: ${diag.params.diagnostics.length} item(s) in ${tDiag.toFixed(0)}ms`);
+	for (const d of diag.params.diagnostics.slice(0,3)) log('  diag: ' + d.message.slice(0,120));
+
+	let items = [], labels = [], ok = false, tComp = 0, attempts = 0;
+	const deadline = performance.now() + 180000;
+	while (performance.now() < deadline) {
+		attempts++;
+		const id = 100 + attempts;
+		const t3 = performance.now();
+		send({jsonrpc:'2.0', id, method:'textDocument/completion', params:{textDocument:{uri:`file://${FILE}`}, position:{line:4, character:4}}});
+		const comp = await waitFor(m => m.id === id, 'completion');
+		tComp = performance.now() - t3;
+		items = comp.result?.items ?? comp.result ?? [];
+		labels = items.map(i => i.label ?? '');
+		ok = labels.some(l => /push_back|size|begin/.test(l));
+		if (ok) break;
+		await new Promise(r => setTimeout(r, 1500));
+	}
+	log(`completion: ${items.length} items in ${tComp.toFixed(0)}ms after ${attempts} attempt(s)`);
+	log('sample: ' + labels.slice(0, 10).join(', '));
+	log(ok ? 'PASS' : 'FAIL: no vector members');
+	window.__result = {ok, tInst, tInit, tDiag, tComp, attempts, items: items.length, sample: labels.slice(0, 12)};
+} catch (e) {
+	log('ERROR: ' + (e?.message ?? String(e)));
+	window.__result = {ok: false, error: e?.message ?? String(e)};
+}
+window.__done = true;
+</script>
+</body>
+</html>
