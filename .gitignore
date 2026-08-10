@@ -1,0 +1,5 @@
+dist/
+*.pch
+*.pch.gz
+*.wasm
+*.log
