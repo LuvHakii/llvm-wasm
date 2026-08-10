@@ -3,3 +3,4 @@ dist/
 *.pch.gz
 *.wasm
 *.log
+node_modules
