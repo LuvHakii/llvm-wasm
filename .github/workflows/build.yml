@@ -1,0 +1,105 @@
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag (e.g. v0.3.0). Empty = dry run (artifact only, 7-day retention)."
+        required: false
+        default: ""
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  ROOT: /home/runner/llvm-build
+  JOBS: 4
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          df -h /
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache llvm-project + emsdk + stage1
+        uses: actions/cache@v4
+        with:
+          path: |
+            /home/runner/llvm-build/llvm-project
+            /home/runner/llvm-build/emsdk
+            /home/runner/llvm-build/stage1
+          key: toolchain-llvm21.1.0-emsdk4.0.22-wasi33-${{ hashFiles('scripts/setup.sh') }}
+
+      - name: Setup (sources, emsdk, sysroot, native tblgen)
+        run: bash scripts/setup.sh
+
+      - name: Build clangd
+        run: bash scripts/build-clangd.sh
+
+      - name: Build clang + wasm-ld
+        run: bash scripts/build-clang.sh
+
+      - name: Install browser harness deps
+        run: |
+          npm install --no-save playwright @bjorn3/browser_wasi_shim
+          npx playwright install --with-deps chromium
+          mkdir -p dist/wasi
+          cp node_modules/@bjorn3/browser_wasi_shim/dist/*.js dist/wasi/
+
+      - name: "Gate: compile + link + run in Chromium"
+        run: node scripts/browser-test/run.mjs ./dist /compile.html,/link.html
+
+      - name: "Gate: clangd LSP in Chromium"
+        run: node scripts/browser-test/run.mjs ./dist /
+
+      - name: Generate PCHs (via clang.wasm in Chromium)
+        run: |
+          for std in c%2B%2B11 c%2B%2B14 c%2B%2B17 c%2B%2B20 c%2B%2B23; do
+            node scripts/browser-test/run.mjs ./dist "/pch.html?std=$std"
+          done
+          ls -la dist/pch/
+
+      - name: Stage release artifacts
+        run: |
+          mkdir -p release
+          for t in clangd clang lld; do
+            cp dist/$t.js release/
+            gzip -9 -c dist/$t.wasm > release/$t.wasm.gz
+          done
+          for f in dist/pch/*.pch; do
+            gzip -9 -c "$f" > "release/$(basename "$f").gz"
+          done
+          ls -la release/
+
+      - name: Upload dry-run artifact
+        if: inputs.release_tag == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolchain-dryrun-${{ github.sha }}
+          path: release/
+          retention-days: 7
+
+      - name: Create release
+        if: inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.release_tag }}" release/* \
+            --target "$GITHUB_SHA" \
+            --title "C++ toolchain (wasm) — ${{ inputs.release_tag }}" \
+            --notes "Built by CI from $GITHUB_SHA. clangd + clang + wasm-ld (LLVM 21.1.0, Emscripten 4.0.22, WASI SDK 33 sysroot) + five stdc++ PCHs. Gated on the Chromium compile/link/run and clangd LSP harnesses."
