@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><meta charset="utf-8"></head><body><pre id="log">…</pre>
+<script type="module">
+const log = m => { document.getElementById('log').textContent += '\n' + m; console.log(m); };
+window.__done = null; window.__result = null;
+try {
+	const {default: Factory} = await import('./lld.js');
+	log('factory imported');
+	let out = '', err = '';
+	const t0 = performance.now();
+	const mod = await Factory({
+		thisProgram: '/usr/bin/wasm-ld',
+		noInitialRun: true,
+		print: t => { out += t + '\n'; },
+		printErr: t => { err += t + '\n'; }
+	});
+	log(`instantiated in ${(performance.now() - t0).toFixed(0)}ms`);
+	let code = -99;
+	try { code = mod.callMain(['--version']) ?? 0; } catch (e) { code = e?.status ?? -1; log('threw: ' + (e?.message ?? e)); }
+	log(`--version exit=${code}`);
+	log('out: ' + JSON.stringify(out.slice(0, 200)));
+	log('err: ' + JSON.stringify(err.slice(0, 300)));
+	log('sysroot lib listing: ' + JSON.stringify(mod.FS.readdir('/sysroot/lib/wasm32-wasi').slice(0, 12)));
+	window.__result = {ok: out.includes('LLD') || err.includes('LLD'), out: out.slice(0,200), err: err.slice(0,300)};
+} catch (e) {
+	log('ERROR: ' + (e?.message ?? String(e)));
+	window.__result = {ok: false, error: String(e?.message ?? e).slice(0, 300)};
+}
+window.__done = true;
+</script></body></html>

@@ -14,10 +14,16 @@ page.on('console', m => console.log('  [page]', m.text()));
 page.on('pageerror', e => console.log('  [pageerror]', e.message.slice(0, 300)));
 
 try {
-	await page.goto(`http://localhost:${PORT}/`, {waitUntil: 'domcontentloaded'});
-	await page.waitForFunction(() => window.__done === true, null, {timeout: 600000});
-	const result = await page.evaluate(() => window.__result);
-	console.log('\nRESULT:', JSON.stringify(result, null, 2));
+	const PAGES = (process.argv[3] ?? '/').split(',');
+	let result;
+	for (const PAGE of PAGES) {
+		console.log(`--- ${PAGE} ---`);
+		await page.goto(`http://localhost:${PORT}${PAGE}`, {waitUntil: 'domcontentloaded'});
+		await page.waitForFunction(() => window.__done === true, null, {timeout: 600000});
+		result = await page.evaluate(() => window.__result);
+		console.log('RESULT:', JSON.stringify(result, null, 2));
+		if (!result?.ok) break;
+	}
 	process.exitCode = result?.ok ? 0 : 1;
 } catch (e) {
 	console.log('HARNESS ERROR:', e.message.slice(0, 400));

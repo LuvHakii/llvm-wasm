@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>link harness</title></head>
+<body>
+<pre id="log">starting…</pre>
+<script type="module">
+const log = m => { document.getElementById('log').textContent += '\n' + m; console.log(m); };
+window.__done = null; window.__result = null;
+
+const qs = new URLSearchParams(location.search);
+const DEFAULT = '--threads=1 -m wasm32 -L/sysroot/lib/wasm32-wasi/eh -L/sysroot/lib/wasm32-wasi /sysroot/lib/wasm32-wasi/crt1.o /main.o -lc -lc++ -lc++abi -lunwind -lclang_rt.builtins -o /main.wasm';
+const LD_ARGS = ['wasm-ld', ...(qs.get('args') ?? DEFAULT).split(' ').filter(Boolean)];
+
+async function runTool(url, args, files) {
+	const {default: Factory} = await import(url);
+	let out = '', err = '';
+	const mod = await Factory({
+		thisProgram: '/usr/bin/' + args[0],
+		noInitialRun: true,
+		print: t => { out += t + '\n'; },
+		printErr: t => { err += t + '\n'; }
+	});
+	for (const [path, data] of Object.entries(files ?? {})) mod.FS.writeFile(path, data);
+	let code = 0;
+	try { code = mod.callMain(args.slice(1)) ?? 0; } catch (e) { code = e?.status ?? -1; }
+	return {code, out, err, mod};
+}
+
+try {
+	log('crossOriginIsolated=' + self.crossOriginIsolated);
+	const b64 = sessionStorage.getItem('obj');
+	if (!b64) throw new Error('no stashed main.o - run /compile.html first in this session');
+	const obj = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+	log('loaded main.o = ' + obj.length + ' bytes');
+	log('args: ' + LD_ARGS.join(' '));
+
+	const t1 = performance.now();
+	const ld = await runTool('./lld.js', LD_ARGS, {'/main.o': obj});
+	const tLink = performance.now() - t1;
+	log('wasm-ld exit=' + ld.code + ' in ' + tLink.toFixed(0) + 'ms');
+	if (ld.err) log('lld stderr: ' + ld.err.slice(0, 600));
+
+	let bin = null;
+	try { bin = ld.mod.FS.readFile('/main.wasm'); log('main.wasm = ' + bin.length + ' bytes'); }
+	catch { log('no main.wasm produced'); }
+
+	let ran = null;
+	if (bin) {
+		const {WASI, Fd, PreopenDirectory} = await import('./wasi/index.js');
+		let stdout = '';
+		class Sink extends Fd {
+			fd_write(d) { stdout += new TextDecoder().decode(d); return {ret: 0, nwritten: d.byteLength}; }
+		}
+		const wasi = new WASI(['main.wasm'], [], [new Fd(), new Sink(), new Sink(), new PreopenDirectory('/sandbox', new Map())]);
+		const inst = await WebAssembly.instantiate(await WebAssembly.compile(bin), {wasi_snapshot_preview1: wasi.wasiImport});
+		try { wasi.start(inst); } catch (e) { if (e?.constructor?.name !== 'WASIProcExit') throw e; }
+		ran = stdout;
+		log('program output: ' + JSON.stringify(stdout));
+	}
+
+	const ok = !!ran && ran.includes('1 3 4 5') && ran.includes('caught: boom');
+	log(ok ? 'PASS' : 'FAIL');
+	window.__result = {ok, tLink, output: ran, ldErr: ld.err.slice(0, 400)};
+} catch (e) {
+	log('ERROR: ' + (e?.message ?? String(e)));
+	window.__result = {ok: false, error: e?.message ?? String(e)};
+}
+window.__done = true;
+</script>
+</body>
+</html>

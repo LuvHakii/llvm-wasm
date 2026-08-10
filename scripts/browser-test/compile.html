@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>clang compile harness</title></head>
+<body>
+<pre id="log">starting…</pre>
+<script type="module">
+const log = m => { document.getElementById('log').textContent += '\n' + m; console.log(m); };
+window.__done = null; window.__result = null;
+
+const SOURCE = `#include <bits/stdc++.h>
+using namespace std;
+int main() {
+  vector<int> v{5,3,1,4};
+  sort(v.begin(), v.end());
+  for (int x : v) cout << x << ' ';
+  cout << '\\n';
+  try { throw runtime_error("boom"); } catch (const exception& e) { cout << "caught: " << e.what() << '\\n'; }
+  return 0;
+}
+`;
+
+const CC1_ARGS = std => ['clang', '-fintegrated-cc1', '-c', '--target=wasm32-wasi', '--sysroot=/sysroot',
+	`-std=${std}`, '-O0', '-fwasm-exceptions', '-fcolor-diagnostics', '-mllvm', '-wasm-use-legacy-eh=false',
+	'-isystem/sysroot/include/wasm32-wasi/eh/c++/v1', '-isystem/sysroot/include/c++/v1',
+	'-isystem/sysroot/include/wasm32-wasi', '-isystem/sysroot/include',
+	'/main.cpp', '-o', '/main.o'];
+
+const LD_ARGS = ['wasm-ld', '-m', 'wasm32', '-L/sysroot/lib/wasm32-wasi/eh', '-L/sysroot/lib/wasm32-wasi',
+	'/sysroot/lib/wasm32-wasi/crt1.o', '/main.o', '-lc', '-lc++', '-lc++abi', '-lunwind', '-o', '/main.wasm'];
+
+async function runTool(url, args, files) {
+	const {default: Factory} = await import(url);
+	let out = '', err = '';
+	const mod = await Factory({
+		thisProgram: '/usr/bin/' + args[0],
+		noInitialRun: true,
+		print: t => { out += t + '\n'; },
+		printErr: t => { err += t + '\n'; }
+	});
+	for (const [path, data] of Object.entries(files ?? {})) mod.FS.writeFile(path, data);
+	let code = 0;
+	try { code = mod.callMain(args.slice(1)) ?? 0; } catch (e) { code = e?.status ?? -1; }
+	return {code, out, err, mod};
+}
+
+try {
+	log('crossOriginIsolated=' + self.crossOriginIsolated);
+	const t0 = performance.now();
+	const cc = await runTool('./clang.js', CC1_ARGS('c++20'), {'/main.cpp': SOURCE});
+	const tCompile = performance.now() - t0;
+	log(`clang exit=${cc.code} in ${tCompile.toFixed(0)}ms`);
+	if (cc.err) log('clang stderr: ' + cc.err.slice(0, 600));
+	let obj = null;
+	try { obj = cc.mod.FS.readFile('/main.o'); log(`main.o = ${obj.length} bytes`); }
+	catch { log('no main.o produced'); }
+
+	if (obj) {
+		sessionStorage.setItem('obj', btoa(String.fromCharCode(...obj)));
+		log('stashed main.o for the link phase');
+	}
+	window.__result = {ok: !!obj && cc.code === 0, tCompile, objBytes: obj?.length ?? 0, clangErr: cc.err.slice(0, 400)};
+} catch (e) {
+	log('ERROR: ' + (e?.message ?? String(e)));
+	window.__result = {ok: false, error: e?.message ?? String(e)};
+}
+window.__done = true;
+</script>
+</body>
+</html>
