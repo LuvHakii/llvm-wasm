@@ -45,6 +45,13 @@ jobs:
             /home/runner/llvm-build/stage1
           key: toolchain-llvm21.1.0-emsdk4.0.22-wasi33-${{ hashFiles('scripts/setup.sh') }}
 
+      - name: Install node deps (tsc for --emit-tsd, harness deps)
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+          mkdir -p dist/wasi
+          cp node_modules/@bjorn3/browser_wasi_shim/dist/*.js dist/wasi/
+
       - name: Setup (sources, emsdk, sysroot, native tblgen)
         run: bash scripts/setup.sh
 
@@ -53,13 +60,6 @@ jobs:
 
       - name: Build clang + wasm-ld
         run: bash scripts/build-clang.sh
-
-      - name: Install browser harness deps
-        run: |
-          npm install --no-save playwright @bjorn3/browser_wasi_shim
-          npx playwright install --with-deps chromium
-          mkdir -p dist/wasi
-          cp node_modules/@bjorn3/browser_wasi_shim/dist/*.js dist/wasi/
 
       - name: "Gate: compile + link + run in Chromium"
         run: node scripts/browser-test/run.mjs ./dist /compile.html,/link.html

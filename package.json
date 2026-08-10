@@ -1,0 +1,9 @@
+{
+	"name": "llvm-wasm",
+	"private": true,
+	"devDependencies": {
+		"@bjorn3/browser_wasi_shim": "^0.4.2",
+		"playwright": "^1.49.0",
+		"typescript": "~5.9.0"
+	}
+}

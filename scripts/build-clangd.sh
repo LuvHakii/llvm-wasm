@@ -13,6 +13,7 @@ NATIVE=$ROOT/stage1
 BUILD=$ROOT/stage2
 
 source $ROOT/emsdk/emsdk_env.sh >/dev/null 2>&1
+export PATH="$REPO/node_modules/.bin:$PATH"
 
 echo "[$(date +%T)] applying wait_stdin.patch"
 cd $SRC
@@ -80,6 +81,7 @@ emcmake cmake "${COMMON[@]}" -B $BUILD \
 -s INITIAL_MEMORY=2GB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=4GB -s STACK_SIZE=256kB \
 -s EXPORTED_RUNTIME_METHODS=FS,callMain -s MODULARIZE -s EXPORT_ES6 -s WASM_BIGINT \
 -s ASYNCIFY -s PTHREAD_POOL_SIZE='Math.max(navigator.hardwareConcurrency, 8)' \
+--emit-tsd=clangd.d.ts \
 --embed-file=$SLIM/include@/usr/include"
 
 echo "[$(date +%T)] pass 2: build clangd (-j$JOBS)"

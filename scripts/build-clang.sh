@@ -11,6 +11,7 @@ NATIVE=$ROOT/stage1
 BUILD=$ROOT/stage2
 
 source $ROOT/emsdk/emsdk_env.sh >/dev/null 2>&1
+export PATH="$REPO/node_modules/.bin:$PATH"
 
 echo "[$(date +%T)] building slim sysroot for the compiler (headers + eh libs)"
 SLIM=$ROOT/sysroot-clang
@@ -51,23 +52,25 @@ emcmake cmake -G Ninja -S $SRC/llvm -B $BUILD \
   -DCMAKE_EXE_LINKER_FLAGS="-pthread -s ENVIRONMENT=worker -s NO_INVOKE_RUN -s EXIT_RUNTIME \
 -s INITIAL_MEMORY=128MB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=4GB -s STACK_SIZE=1MB \
 -s EXPORTED_RUNTIME_METHODS=FS,callMain -s MODULARIZE -s EXPORT_ES6 -s WASM_BIGINT \
+--emit-tsd=clang.d.ts \
 --embed-file=$SLIM/include@/sysroot/include"
 
 echo "[$(date +%T)] building clang -j$JOBS"
 cmake --build $BUILD --target clang -j $JOBS
 mkdir -p $REPO/dist
-cp $BUILD/bin/clang.js $BUILD/bin/clang.wasm $REPO/dist/ 2>/dev/null || true
+cp $BUILD/bin/clang.js $BUILD/bin/clang.wasm $BUILD/bin/clang.d.ts $REPO/dist/ 2>/dev/null || true
 
 echo "[$(date +%T)] reconfiguring for wasm-ld (embed libs instead of headers)"
 emcmake cmake -G Ninja -S $SRC/llvm -B $BUILD \
   -DCMAKE_EXE_LINKER_FLAGS="-pthread -s ENVIRONMENT=worker -s NO_INVOKE_RUN -s EXIT_RUNTIME \
 -s INITIAL_MEMORY=1GB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=4GB -s STACK_SIZE=1MB \
 -s EXPORTED_RUNTIME_METHODS=FS,callMain -s MODULARIZE -s EXPORT_ES6 -s WASM_BIGINT \
+--emit-tsd=lld.d.ts \
 --embed-file=$SLIM/lib@/sysroot/lib"
 
 echo "[$(date +%T)] building wasm-ld -j$JOBS"
 cmake --build $BUILD --target lld -j $JOBS
-cp $BUILD/bin/lld.js $BUILD/bin/lld.wasm $REPO/dist/ 2>/dev/null || true
+cp $BUILD/bin/lld.js $BUILD/bin/lld.wasm $BUILD/bin/lld.d.ts $REPO/dist/ 2>/dev/null || true
 echo "[$(date +%T)] CLANG BUILD DONE"
 ls -la $REPO/dist/
 du -sh $BUILD

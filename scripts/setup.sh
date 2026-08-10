@@ -25,8 +25,8 @@ fi
 
 if [ ! -d $ROOT/wasi-sysroot ]; then
   echo "[$(date +%T)] fetching wasi-sysroot $WASI_SDK_VER"
-  curl -sL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-$WASI_SDK_MAJOR/wasi-sysroot-$WASI_SDK_VER.tar.gz | tar xz -C $ROOT
-  mv $ROOT/wasi-sysroot-$WASI_SDK_VER $ROOT/wasi-sysroot
+  curl -fsSL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-$WASI_SDK_MAJOR/wasi-sysroot-$WASI_SDK_VER+m.tar.gz | tar xz -C $ROOT
+  mv $ROOT/wasi-sysroot-$WASI_SDK_VER+m $ROOT/wasi-sysroot
 fi
 
 if [ ! -f $ROOT/stage1/bin/llvm-tblgen ] || [ ! -f $ROOT/stage1/bin/clang-tblgen ]; then
