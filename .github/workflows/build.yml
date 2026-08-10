@@ -78,7 +78,7 @@ jobs:
         run: |
           mkdir -p release
           for t in clangd clang lld; do
-            cp dist/$t.js release/
+            cp dist/$t.js dist/$t.d.ts release/
             gzip -9 -c dist/$t.wasm > release/$t.wasm.gz
           done
           for f in dist/pch/*.pch; do
