@@ -3,10 +3,10 @@ name: build
 on:
   workflow_dispatch:
     inputs:
-      release_tag:
-        description: "Release tag (e.g. v0.3.0). Empty = dry run (artifact only, 7-day retention)."
-        required: false
-        default: ""
+      release:
+        description: "Publish a release tagged build-<shortsha> on success. Off = dry run (artifact only, 7-day retention)."
+        type: boolean
+        default: false
 
 concurrency:
   group: build
@@ -87,7 +87,7 @@ jobs:
           ls -la release/
 
       - name: Upload dry-run artifact
-        if: inputs.release_tag == ''
+        if: '!inputs.release'
         uses: actions/upload-artifact@v4
         with:
           name: toolchain-dryrun-${{ github.sha }}
@@ -95,11 +95,13 @@ jobs:
           retention-days: 7
 
       - name: Create release
-        if: inputs.release_tag != ''
+        if: inputs.release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ inputs.release_tag }}" release/* \
+          TAG="build-${GITHUB_SHA::7}"
+          gh release create "$TAG" release/* \
             --target "$GITHUB_SHA" \
-            --title "C++ toolchain (wasm) — ${{ inputs.release_tag }}" \
-            --notes "Built by CI from $GITHUB_SHA. clangd + clang + wasm-ld (LLVM 21.1.0, Emscripten 4.0.22, WASI SDK 33 sysroot) + five stdc++ PCHs. Gated on the Chromium compile/link/run and clangd LSP harnesses."
+            --title "C++ toolchain (wasm) — $TAG" \
+            --notes "Built by CI from $GITHUB_SHA. clangd + clang + wasm-ld (LLVM 21.1.0, Emscripten 4.0.22, WASI SDK 33 sysroot) + five stdc++ PCHs and TypeScript definitions. Gated on the Chromium compile/link/run and clangd LSP harnesses." \
+          || gh release upload "$TAG" release/* --clobber
