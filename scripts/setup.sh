@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-LLVM_VER=21.1.0
+LLVM_VER=22.1.8
 EMSDK_VER=4.0.22
 WASI_SDK_MAJOR=33
 WASI_SDK_VER=33.0
