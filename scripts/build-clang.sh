@@ -52,6 +52,7 @@ emcmake cmake -G Ninja -S $SRC/llvm -B $BUILD \
   -DCMAKE_EXE_LINKER_FLAGS="-pthread -s ENVIRONMENT=worker -s NO_INVOKE_RUN -s EXIT_RUNTIME \
 -s INITIAL_MEMORY=128MB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=4GB -s STACK_SIZE=1MB \
 -s EXPORTED_RUNTIME_METHODS=FS,callMain -s MODULARIZE -s EXPORT_ES6 -s WASM_BIGINT \
+-s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed \
 --emit-tsd=clang.d.ts \
 --embed-file=$SLIM/include@/sysroot/include"
 
@@ -65,6 +66,7 @@ emcmake cmake -G Ninja -S $SRC/llvm -B $BUILD \
   -DCMAKE_EXE_LINKER_FLAGS="-pthread -s ENVIRONMENT=worker -s NO_INVOKE_RUN -s EXIT_RUNTIME \
 -s INITIAL_MEMORY=1GB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=4GB -s STACK_SIZE=1MB \
 -s EXPORTED_RUNTIME_METHODS=FS,callMain -s MODULARIZE -s EXPORT_ES6 -s WASM_BIGINT \
+-s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed \
 --emit-tsd=lld.d.ts \
 --embed-file=$SLIM/lib@/sysroot/lib"
 

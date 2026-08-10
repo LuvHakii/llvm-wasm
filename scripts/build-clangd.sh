@@ -81,6 +81,7 @@ emcmake cmake "${COMMON[@]}" -B $BUILD \
 -s INITIAL_MEMORY=2GB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=4GB -s STACK_SIZE=256kB \
 -s EXPORTED_RUNTIME_METHODS=FS,callMain -s MODULARIZE -s EXPORT_ES6 -s WASM_BIGINT \
 -s ASYNCIFY -s PTHREAD_POOL_SIZE='Math.max(navigator.hardwareConcurrency, 8)' \
+-s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed \
 --emit-tsd=clangd.d.ts \
 --embed-file=$SLIM/include@/usr/include"
 
