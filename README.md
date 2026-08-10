@@ -120,6 +120,33 @@ Two things that fail *silently* if wrong:
 | `std::mutex`, `std::atomic`, deferred `std::async` | work |
 | `std::thread` + `join` | links, then **traps at runtime** |
 
+### Compile + link + run, verified in headless Chromium
+
+Full pipeline on `<bits/stdc++.h>` + `sort` + iostream + `throw`/`catch`:
+
+| step | measured |
+|---|---|
+| clang compile (no PCH) | 5.6 s -> `main.o` 37 KB |
+| wasm-ld link | 0.4 s -> `main.wasm` 3.7 MB |
+| run under browser_wasi_shim | `1 3 4 5` / `caught: boom` |
+
+Four things that were required and are not obvious:
+
+1. **`wasm-ld --threads=1`.** Without it lld's multithreaded output writer **crashes the
+   page** with no error, but only once it gets far enough to actually write output - an
+   early error exit looks fine, which makes this easy to misdiagnose.
+2. **`-lclang_rt.builtins`.** Otherwise `undefined symbol: __multi3`. It is a separate
+   wasi-sdk release asset (`libclang_rt-33.0+m.tar.gz`), not part of the sysroot tarball.
+3. **`-mllvm -wasm-use-legacy-eh=false`.** Our clang 21 defaults to legacy EH while
+   wasi-sdk 33's prebuilt libc++ uses exnref, so linking succeeds and then
+   `WebAssembly.compile` rejects the result: *"module uses a mix of legacy and new
+   exception handling instructions"*.
+4. **clang and lld must not share a page/worker.** Instantiating both at once crashes
+   Chromium regardless of `INITIAL_MEMORY`. Run them in separate workers.
+
+Also note ninja will not relink when only the *contents* of an `--embed-file` directory
+change - the path is unchanged, so the output looks up to date. Delete the binary to force it.
+
 ### Gotchas
 
 - **`-lunwind` is required** with `-fwasm-exceptions`; it is not auto-linked.
