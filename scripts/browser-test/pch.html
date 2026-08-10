@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>pch harness</title></head>
+<body>
+<pre id="log">starting…</pre>
+<script type="module">
+const log = m => { document.getElementById('log').textContent += '\n' + m; console.log(m); };
+window.__done = null; window.__result = null; window.__pchB64 = null;
+
+const qs = new URLSearchParams(location.search);
+const STD = qs.get('std') ?? 'c++20';
+
+const BASE = ['--target=wasm32-wasi', '--sysroot=/sysroot', '-O0', '-fwasm-exceptions',
+	'-mllvm', '-wasm-use-legacy-eh=false',
+	'-isystem/sysroot/include/wasm32-wasi/eh/c++/v1', '-isystem/sysroot/include/c++/v1',
+	'-isystem/sysroot/include/wasm32-wasi', '-isystem/sysroot/include'];
+
+const SOURCE = `#include <bits/stdc++.h>
+using namespace std;
+int main() { vector<int> v{5,3,1,4}; sort(v.begin(), v.end()); for (int x : v) cout << x << ' '; cout << '\\n'; return 0; }
+`;
+
+try {
+	log('std=' + STD);
+	const {default: Factory} = await import('./clang.js');
+	let err = '';
+	const mod = await Factory({
+		thisProgram: '/usr/bin/clang', noInitialRun: true,
+		print: () => {}, printErr: t => { err += t + '\n'; }
+	});
+
+	const t0 = performance.now();
+	let code = 0;
+	try {
+		code = mod.callMain(['-fintegrated-cc1', '-x', 'c++-header', ...BASE, `-std=${STD}`,
+			'/sysroot/include/wasm32-wasi/eh/c++/v1/bits/stdc++.h', '-o', '/stdc++.pch']) ?? 0;
+	} catch (e) { code = e?.status ?? -1; }
+	const tGen = performance.now() - t0;
+	log(`pch gen exit=${code} in ${tGen.toFixed(0)}ms`);
+	if (err) log('stderr: ' + err.slice(0, 400));
+
+	let pch = null;
+	try { pch = mod.FS.readFile('/stdc++.pch'); log(`stdc++.pch = ${pch.length} bytes`); }
+	catch { log('no pch produced'); }
+
+	let tNo = 0, tWith = 0;
+	if (pch) {
+		mod.FS.writeFile('/main.cpp', SOURCE);
+		let t = performance.now();
+		try { mod.callMain(['-fintegrated-cc1', '-c', ...BASE, `-std=${STD}`, '/main.cpp', '-o', '/a.o']); } catch {}
+		tNo = performance.now() - t;
+		t = performance.now();
+		try { mod.callMain(['-fintegrated-cc1', '-c', ...BASE, `-std=${STD}`, '-include-pch', '/stdc++.pch', '/main.cpp', '-o', '/b.o']); } catch {}
+		tWith = performance.now() - t;
+		log(`compile without pch: ${tNo.toFixed(0)}ms, with pch: ${tWith.toFixed(0)}ms`);
+		let bin = '';
+		const CH = 0x8000;
+		for (let i = 0; i < pch.length; i += CH) bin += String.fromCharCode(...pch.subarray(i, i + CH));
+		window.__pchB64 = btoa(bin);
+	}
+	window.__result = {ok: !!pch && code === 0, std: STD, tGen, pchBytes: pch?.length ?? 0, tNo, tWith, err: err.slice(0, 300)};
+} catch (e) {
+	log('ERROR: ' + (e?.message ?? String(e)));
+	window.__result = {ok: false, error: e?.message ?? String(e)};
+}
+window.__done = true;
+</script>
+</body>
+</html>

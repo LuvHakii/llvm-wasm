@@ -21,6 +21,14 @@ try {
 		await page.goto(`http://localhost:${PORT}${PAGE}`, {waitUntil: 'domcontentloaded'});
 		await page.waitForFunction(() => window.__done === true, null, {timeout: 600000});
 		result = await page.evaluate(() => window.__result);
+		const pch = await page.evaluate(() => window.__pchB64);
+		if (pch) {
+			const {writeFileSync, mkdirSync} = await import('node:fs');
+			mkdirSync(resolve(DIST, 'pch'), {recursive: true});
+			const out = resolve(DIST, 'pch', `stdc++-${result.std}.pch`);
+			writeFileSync(out, Buffer.from(pch, 'base64'));
+			console.log(`  wrote ${out}`);
+		}
 		console.log('RESULT:', JSON.stringify(result, null, 2));
 		if (!result?.ok) break;
 	}
