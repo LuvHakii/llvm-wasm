@@ -8,6 +8,12 @@ WASI_SDK_VER=33.0
 ROOT=${ROOT:-$HOME/llvm-build}
 JOBS=${JOBS:-8}
 
+if [ -n "$GITHUB_ENV" ]; then
+  echo "LLVM_VER=$LLVM_VER" >> "$GITHUB_ENV"
+  echo "EMSDK_VER=$EMSDK_VER" >> "$GITHUB_ENV"
+  echo "WASI_SDK_VER=$WASI_SDK_VER" >> "$GITHUB_ENV"
+fi
+
 mkdir -p $ROOT
 
 if [ ! -d $ROOT/llvm-project ]; then
