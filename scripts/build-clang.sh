@@ -33,7 +33,7 @@ fi
 cp $RT $SLIM/lib/wasm32-wasi/
 echo "  slim compiler sysroot: $(du -sh $SLIM | cut -f1)"
 
-echo "[$(date +%T)] reconfiguring stage2 for clang+lld (no ASYNCIFY)"
+echo "[$(date +%T)] reconfiguring stage2 for merged clang+lld multicall (no ASYNCIFY)"
 emcmake cmake -G Ninja -S $SRC/llvm -B $BUILD \
   -DCMAKE_CXX_FLAGS="-pthread -Dwait4=__syscall_wait4" \
   -DCMAKE_BUILD_TYPE=MinSizeRel \
@@ -48,32 +48,23 @@ emcmake cmake -G Ninja -S $SRC/llvm -B $BUILD \
   -DLLVM_ENABLE_BACKTRACES=OFF -DLLVM_ENABLE_UNWIND_TABLES=OFF \
   -DLLVM_ENABLE_CRASH_OVERRIDES=OFF -DCLANG_ENABLE_STATIC_ANALYZER=OFF \
   -DLLVM_ENABLE_TERMINFO=OFF -DLLVM_ENABLE_PIC=OFF -DLLVM_ENABLE_ZLIB=OFF \
-  -DCLANG_ENABLE_ARCMT=OFF -DLLVM_PARALLEL_LINK_JOBS=1 -DLLVM_TOOL_LLVM_DRIVER_BUILD=OFF \
-  -DCMAKE_EXE_LINKER_FLAGS="-pthread -s ENVIRONMENT=worker -s NO_INVOKE_RUN -s EXIT_RUNTIME \
--s INITIAL_MEMORY=128MB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=4GB -s STACK_SIZE=1MB \
--s EXPORTED_RUNTIME_METHODS=FS,callMain -s MODULARIZE -s EXPORT_ES6 -s WASM_BIGINT \
--s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed \
---emit-tsd=clang.d.ts \
---embed-file=$SLIM/include@/sysroot/include"
-
-echo "[$(date +%T)] building clang -j$JOBS"
-cmake --build $BUILD --target clang -j $JOBS
-mkdir -p $REPO/dist
-cp $BUILD/bin/clang.js $BUILD/bin/clang.wasm $BUILD/bin/clang.d.ts $REPO/dist/ 2>/dev/null || true
-
-echo "[$(date +%T)] reconfiguring for wasm-ld (embed libs instead of headers)"
-emcmake cmake -G Ninja -S $SRC/llvm -B $BUILD \
+  -DCLANG_ENABLE_ARCMT=OFF -DLLVM_PARALLEL_LINK_JOBS=1 \
+  -DLLVM_TOOL_LLVM_DRIVER_BUILD=ON \
+  -DLLVM_DISTRIBUTION_COMPONENTS="clang;lld" \
   -DCMAKE_EXE_LINKER_FLAGS="-pthread -s ENVIRONMENT=worker -s NO_INVOKE_RUN -s EXIT_RUNTIME \
 -s INITIAL_MEMORY=1GB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=4GB -s STACK_SIZE=1MB \
 -s EXPORTED_RUNTIME_METHODS=FS,callMain -s MODULARIZE -s EXPORT_ES6 -s WASM_BIGINT \
 -s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed \
---emit-tsd=lld.d.ts \
+--emit-tsd=llvm.d.ts \
+--embed-file=$SLIM/include@/sysroot/include \
 --embed-file=$SLIM/lib@/sysroot/lib"
 
-echo "[$(date +%T)] building wasm-ld -j$JOBS"
-cmake --build $BUILD --target lld -j $JOBS
-cp $BUILD/bin/lld.js $BUILD/bin/lld.wasm $BUILD/bin/lld.d.ts $REPO/dist/ 2>/dev/null || true
-echo "[$(date +%T)] CLANG BUILD DONE"
+echo "[$(date +%T)] building llvm multicall -j$JOBS"
+rm -f $BUILD/bin/llvm.js $BUILD/bin/llvm.wasm $BUILD/bin/llvm.d.ts
+cmake --build $BUILD --target llvm-driver -j $JOBS
+mkdir -p $REPO/dist
+cp $BUILD/bin/llvm.js $BUILD/bin/llvm.wasm $BUILD/bin/llvm.d.ts $REPO/dist/
+echo "[$(date +%T)] MERGED LLVM BUILD DONE"
 ls -la $REPO/dist/
 du -sh $BUILD
 df -h / | tail -1

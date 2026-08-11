@@ -22,7 +22,7 @@ int main() { vector<int> v{5,3,1,4}; sort(v.begin(), v.end()); for (int x : v) c
 
 try {
 	log('std=' + STD);
-	const {default: Factory} = await import('./clang.js');
+	const {default: Factory} = await import('./llvm.js');
 	let err = '';
 	const mod = await Factory({
 		thisProgram: '/usr/bin/clang', noInitialRun: true,

@@ -35,7 +35,7 @@ try {
 	log('args: ' + LD_ARGS.join(' '));
 
 	const t1 = performance.now();
-	const ld = await runTool('./lld.js', LD_ARGS, {'/main.o': obj});
+	const ld = await runTool('./llvm.js', LD_ARGS, {'/main.o': obj});
 	const tLink = performance.now() - t1;
 	log('wasm-ld exit=' + ld.code + ' in ' + tLink.toFixed(0) + 'ms');
 	if (ld.err) log('lld stderr: ' + ld.err.slice(0, 600));

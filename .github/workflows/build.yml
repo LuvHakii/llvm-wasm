@@ -58,7 +58,7 @@ jobs:
       - name: Build clangd
         run: bash scripts/build-clangd.sh
 
-      - name: Build clang + wasm-ld
+      - name: Build clang + wasm-ld (merged multicall)
         run: bash scripts/build-clang.sh
 
       - name: "Gate: compile + link + run in Chromium"
@@ -67,7 +67,7 @@ jobs:
       - name: "Gate: clangd LSP in Chromium"
         run: node scripts/browser-test/run.mjs ./dist /
 
-      - name: Generate PCHs (via clang.wasm in Chromium)
+      - name: Generate PCHs (via llvm.wasm in Chromium)
         run: |
           for std in c%2B%2B11 c%2B%2B14 c%2B%2B17 c%2B%2B20 c%2B%2B23; do
             node scripts/browser-test/run.mjs ./dist "/pch.html?std=$std"
@@ -77,7 +77,7 @@ jobs:
       - name: Stage release artifacts
         run: |
           mkdir -p release
-          for t in clangd clang lld; do
+          for t in clangd llvm; do
             cp dist/$t.js dist/$t.d.ts release/
             gzip -9 -c dist/$t.wasm > release/$t.wasm.gz
           done
@@ -103,5 +103,5 @@ jobs:
           gh release create "$TAG" release/* \
             --target "$GITHUB_SHA" \
             --title "C++ toolchain (wasm) — $TAG" \
-            --notes "Built by CI from $GITHUB_SHA. clangd + clang + wasm-ld (LLVM 21.1.0, Emscripten 4.0.22, WASI SDK 33 sysroot) + five stdc++ PCHs and TypeScript definitions. Gated on the Chromium compile/link/run and clangd LSP harnesses." \
+            --notes "Built by CI from $GITHUB_SHA. clangd + merged clang/wasm-ld multicall (LLVM 21.1.0, Emscripten 4.0.22, WASI SDK 33 sysroot) + five stdc++ PCHs and TypeScript definitions. Gated on the Chromium compile/link/run and clangd LSP harnesses." \
           || gh release upload "$TAG" release/* --clobber
