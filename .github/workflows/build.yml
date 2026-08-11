@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: "Publish release build-<shortsha>. Off = dry run, artifact only, 7 days."
+        description: "Publish release <yyyymmdd-hhmm> UTC. Off = dry run, artifact only, 7 days."
         type: boolean
         default: false
 
@@ -109,11 +109,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="build-${GITHUB_SHA::7}"
+          # One clock read, so tag and body can never straddle a minute.
+          NOW=$(date -u +%s)
+          TAG=$(date -u -d "@$NOW" +%Y%m%d-%H%M)
           NOTES=$(printf 'WASM: v%s\nLLVM: v%s\nWASI: v%s\n%s\n' \
-            "$EMSDK_VER" "$LLVM_VER" "$WASI_SDK_VER" "$(date -u +%FT%TZ)")
+            "$EMSDK_VER" "$LLVM_VER" "$WASI_SDK_VER" "$(date -u -d "@$NOW" +%FT%TZ)")
           gh release create "$TAG" release/* \
             --target "$GITHUB_SHA" \
             --title "${GITHUB_SHA::7}" \
             --notes "$NOTES" \
           || gh release upload "$TAG" release/* --clobber
+
