@@ -9,20 +9,20 @@ echo "[$(date +%T)] building slim sysroot for the compiler (headers + eh libs)"
 SLIM=$ROOT/sysroot-clang
 rm -rf $SLIM && mkdir -p $SLIM/include $SLIM/lib
 find $SYSROOT/include -maxdepth 1 -type f -name '*.h' -exec cp {} $SLIM/include/ \;
-cp -r $SYSROOT/include/wasm32-wasi $SLIM/include/
-rm -rf $SLIM/include/wasm32-wasi/noeh
-mkdir -p $SLIM/include/wasm32-wasi/eh/c++/v1/bits $SLIM/include/c++/v1/bits
-cp $REPO/scripts/bits-stdc++.h $SLIM/include/wasm32-wasi/eh/c++/v1/bits/stdc++.h
+cp -r $SYSROOT/include/wasm32-wasip1 $SLIM/include/
+rm -rf $SLIM/include/wasm32-wasip1/noeh
+mkdir -p $SLIM/include/wasm32-wasip1/eh/c++/v1/bits $SLIM/include/c++/v1/bits
+cp $REPO/scripts/bits-stdc++.h $SLIM/include/wasm32-wasip1/eh/c++/v1/bits/stdc++.h
 cp $REPO/scripts/bits-stdc++.h $SLIM/include/c++/v1/bits/stdc++.h
-mkdir -p $SLIM/lib/wasm32-wasi
-cp $SYSROOT/lib/wasm32-wasi/*.a $SYSROOT/lib/wasm32-wasi/*.o $SLIM/lib/wasm32-wasi/ 2>/dev/null || true
-cp -r $SYSROOT/lib/wasm32-wasi/eh $SLIM/lib/wasm32-wasi/
+mkdir -p $SLIM/lib/wasm32-wasip1
+cp $SYSROOT/lib/wasm32-wasip1/*.a $SYSROOT/lib/wasm32-wasip1/*.o $SLIM/lib/wasm32-wasip1/ 2>/dev/null || true
+cp -r $SYSROOT/lib/wasm32-wasip1/eh $SLIM/lib/wasm32-wasip1/
 RT=$ROOT/libclang_rt-$WASI_SDK_VER+m/wasm32-unknown-wasi/libclang_rt.builtins.a
 if [ ! -f "$RT" ]; then
   curl -sL -o $ROOT/libclang_rt.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-$WASI_SDK_MAJOR/libclang_rt-$WASI_SDK_VER+m.tar.gz
   tar xf $ROOT/libclang_rt.tar.gz -C $ROOT
 fi
-cp $RT $SLIM/lib/wasm32-wasi/
+cp $RT $SLIM/lib/wasm32-wasip1/
 echo "  slim compiler sysroot: $(du -sh $SLIM | cut -f1)"
 
 echo "[$(date +%T)] reconfiguring stage2 for merged clang+lld multicall (no ASYNCIFY)"

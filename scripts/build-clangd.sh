@@ -36,10 +36,10 @@ echo "[$(date +%T)] building slim sysroot (drop unused triples and the noeh vari
 SLIM=$ROOT/sysroot-slim
 rm -rf $SLIM && mkdir -p $SLIM/include
 find $SYSROOT/include -maxdepth 1 -type f -name '*.h' -exec cp {} $SLIM/include/ \;
-cp -r $SYSROOT/include/wasm32-wasi $SLIM/include/
-rm -rf $SLIM/include/wasm32-wasi/noeh
-mkdir -p $SLIM/include/wasm32-wasi/eh/c++/v1/bits
-cp $REPO/scripts/bits-stdc++.h $SLIM/include/wasm32-wasi/eh/c++/v1/bits/stdc++.h
+cp -r $SYSROOT/include/wasm32-wasip1 $SLIM/include/
+rm -rf $SLIM/include/wasm32-wasip1/noeh
+mkdir -p $SLIM/include/wasm32-wasip1/eh/c++/v1/bits
+cp $REPO/scripts/bits-stdc++.h $SLIM/include/wasm32-wasip1/eh/c++/v1/bits/stdc++.h
 mkdir -p $SLIM/include/c++/v1/bits
 cp $REPO/scripts/bits-stdc++.h $SLIM/include/c++/v1/bits/stdc++.h
 echo "  slim sysroot: $(du -sh $SLIM/include | cut -f1) (was $(du -sh $SYSROOT/include | cut -f1))"

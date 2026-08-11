@@ -23,7 +23,7 @@ COMMON_CMAKE=(
   -DCMAKE_CXX_FLAGS="-pthread -Dwait4=__syscall_wait4"
   -DCMAKE_BUILD_TYPE=MinSizeRel
   -DLLVM_TARGET_ARCH=wasm32-emscripten
-  -DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-wasi
+  -DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-wasip1
   -DLLVM_TARGETS_TO_BUILD=WebAssembly
   -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld"
   -DLLVM_TABLEGEN=$NATIVE/bin/llvm-tblgen
