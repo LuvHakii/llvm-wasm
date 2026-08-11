@@ -103,5 +103,5 @@ jobs:
           gh release create "$TAG" release/* \
             --target "$GITHUB_SHA" \
             --title "C++ toolchain (wasm) — $TAG" \
-            --notes "Built by CI from $GITHUB_SHA. clangd + merged clang/wasm-ld multicall (LLVM 21.1.0, Emscripten 4.0.22, WASI SDK 33 sysroot) + five stdc++ PCHs and TypeScript definitions. Gated on the Chromium compile/link/run and clangd LSP harnesses." \
+            --notes "Built by CI from $GITHUB_SHA. clangd + merged clang/wasm-ld multicall (LLVM 22.1.8, Emscripten 4.0.22, WASI SDK 33 sysroot) + five stdc++ PCHs and TypeScript definitions. Gated on the Chromium compile/link/run and clangd LSP harnesses." \
           || gh release upload "$TAG" release/* --clobber
