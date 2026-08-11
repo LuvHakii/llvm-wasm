@@ -86,13 +86,12 @@ jobs:
         run: |
           source scripts/common.sh
           mkdir -p release
+          # raw, uncompressed - the consuming build (omni) fetches these and compresses once
+          # itself (brotli), instead of round-tripping through gzip-here then decompress-there
           for t in clangd llvm; do
-            cp dist/$t.js dist/$t.d.ts release/
-            gzip -9 -c dist/$t.wasm > release/$t.wasm.gz
+            cp dist/$t.js dist/$t.d.ts dist/$t.wasm release/
           done
-          for f in dist/pch/*.pch; do
-            gzip -9 -c "$f" > "release/$(basename "$f").gz"
-          done
+          cp dist/pch/*.pch release/
           printf '{"llvm":"%s","emscripten":"%s","wasiSdk":"%s"}' \
             "$LLVM_VER" "$EMSDK_VER" "$WASI_SDK_VER" > release/versions.json
           ls -la release/
