@@ -84,6 +84,8 @@ jobs:
           for f in dist/pch/*.pch; do
             gzip -9 -c "$f" > "release/$(basename "$f").gz"
           done
+          printf '{"llvm":"%s","emscripten":"%s","wasiSdk":"%s"}' \
+            "$LLVM_VER" "$EMSDK_VER" "$WASI_SDK_VER" > release/versions.json
           ls -la release/
 
       - name: Upload dry-run artifact
@@ -103,5 +105,5 @@ jobs:
           gh release create "$TAG" release/* \
             --target "$GITHUB_SHA" \
             --title "C++ toolchain (wasm) — $TAG" \
-            --notes "Built by CI from $GITHUB_SHA. clangd + merged clang/wasm-ld multicall (LLVM 22.1.8, Emscripten 4.0.22, WASI SDK 33 sysroot) + five stdc++ PCHs and TypeScript definitions. Gated on the Chromium compile/link/run and clangd LSP harnesses." \
+            --notes "Built by CI from $GITHUB_SHA. clangd + merged clang/wasm-ld multicall (LLVM $LLVM_VER, Emscripten $EMSDK_VER, WASI SDK $WASI_SDK_VER sysroot) + five stdc++ PCHs and TypeScript definitions. Gated on the Chromium compile/link/run and clangd LSP harnesses." \
           || gh release upload "$TAG" release/* --clobber
