@@ -84,6 +84,7 @@ jobs:
 
       - name: stage release
         run: |
+          source scripts/common.sh
           mkdir -p release
           for t in clangd llvm; do
             cp dist/$t.js dist/$t.d.ts release/
@@ -109,6 +110,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          source scripts/common.sh
           # One clock read, so tag and body can never straddle a minute.
           NOW=$(date -u +%s)
           TAG=$(date -u -d "@$NOW" +%Y%m%d-%H%M)
