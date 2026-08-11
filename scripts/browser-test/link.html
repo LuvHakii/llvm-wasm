@@ -8,7 +8,7 @@ const log = m => { document.getElementById('log').textContent += '\n' + m; conso
 window.__done = null; window.__result = null;
 
 const qs = new URLSearchParams(location.search);
-const DEFAULT = '--threads=1 -m wasm32 -L/sysroot/lib/wasm32-wasi/eh -L/sysroot/lib/wasm32-wasi /sysroot/lib/wasm32-wasi/crt1.o /main.o -lc -lc++ -lc++abi -lunwind -lclang_rt.builtins -o /main.wasm';
+const DEFAULT = '--threads=1 -m wasm32 -L/sysroot/lib/wasm32-wasip1/eh -L/sysroot/lib/wasm32-wasip1 /sysroot/lib/wasm32-wasip1/crt1.o /main.o -lc -lc++ -lc++abi -lunwind -lclang_rt.builtins -o /main.wasm';
 const LD_ARGS = ['wasm-ld', ...(qs.get('args') ?? DEFAULT).split(' ').filter(Boolean)];
 
 async function runTool(url, args, files) {

@@ -19,14 +19,14 @@ int main() {
 }
 `;
 
-const CC1_ARGS = std => ['clang', '-fintegrated-cc1', '-c', '--target=wasm32-wasi', '--sysroot=/sysroot',
+const CC1_ARGS = std => ['clang', '-fintegrated-cc1', '-c', '--target=wasm32-wasip1', '--sysroot=/sysroot',
 	`-std=${std}`, '-O0', '-fwasm-exceptions', '-fcolor-diagnostics', '-mllvm', '-wasm-use-legacy-eh=false',
-	'-isystem/sysroot/include/wasm32-wasi/eh/c++/v1', '-isystem/sysroot/include/c++/v1',
-	'-isystem/sysroot/include/wasm32-wasi', '-isystem/sysroot/include',
+	'-isystem/sysroot/include/wasm32-wasip1/eh/c++/v1', '-isystem/sysroot/include/c++/v1',
+	'-isystem/sysroot/include/wasm32-wasip1', '-isystem/sysroot/include',
 	'/main.cpp', '-o', '/main.o'];
 
-const LD_ARGS = ['wasm-ld', '-m', 'wasm32', '-L/sysroot/lib/wasm32-wasi/eh', '-L/sysroot/lib/wasm32-wasi',
-	'/sysroot/lib/wasm32-wasi/crt1.o', '/main.o', '-lc', '-lc++', '-lc++abi', '-lunwind', '-o', '/main.wasm'];
+const LD_ARGS = ['wasm-ld', '-m', 'wasm32', '-L/sysroot/lib/wasm32-wasip1/eh', '-L/sysroot/lib/wasm32-wasip1',
+	'/sysroot/lib/wasm32-wasip1/crt1.o', '/main.o', '-lc', '-lc++', '-lc++abi', '-lunwind', '-o', '/main.wasm'];
 
 async function runTool(url, args, files) {
 	const {default: Factory} = await import(url);

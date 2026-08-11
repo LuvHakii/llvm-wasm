@@ -64,11 +64,11 @@ shim is pointless: `<vector>` alone costs 70x the base overhead and `<iostream>`
 
 All live in the scripts or tests. Drop one, the build breaks without saying why.
 
-- Embed only `wasm32-wasi/eh`. wasi-sdk ships five triples, each with `eh` and
+- Embed only `wasm32-wasip1/eh`. wasi-sdk ships five triples, each with `eh` and
   `noeh` libc++. Dropping the rest cuts header mass 7x and `clangd.wasm` 3x,
   gzip 2.2x, landing at 14.7 MiB, under the cap. `CLANGD_TIDY_CHECKS=OFF` shaves
   another 3%.
-- Include paths. libc++ is at `include/wasm32-wasi/eh/c++/v1`, not
+- Include paths. libc++ is at `include/wasm32-wasip1/eh/c++/v1`, not
   `include/c++/v1`. Wrong path, clangd drops to identifier-based completion,
   silently.
 - stdin chunking. Feed clangd discrete chunks, each followed by a `null`. A

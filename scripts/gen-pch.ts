@@ -2,12 +2,12 @@ import {resolve} from "node:path";
 
 const DIST = resolve(process.argv[2] ?? "./dist");
 const STDS = ["c++11", "c++14", "c++17", "c++20", "c++23"];
-const SHIM = "/sysroot/include/wasm32-wasi/eh/c++/v1/bits/stdc++.h";
+const SHIM = "/sysroot/include/wasm32-wasip1/eh/c++/v1/bits/stdc++.h";
 const BASE = [
-	"--target=wasm32-wasi", "--sysroot=/sysroot", "-O0", "-fwasm-exceptions",
+	"--target=wasm32-wasip1", "--sysroot=/sysroot", "-O0", "-fwasm-exceptions",
 	"-mllvm", "-wasm-use-legacy-eh=false",
-	"-isystem/sysroot/include/wasm32-wasi/eh/c++/v1", "-isystem/sysroot/include/c++/v1",
-	"-isystem/sysroot/include/wasm32-wasi", "-isystem/sysroot/include",
+	"-isystem/sysroot/include/wasm32-wasip1/eh/c++/v1", "-isystem/sysroot/include/c++/v1",
+	"-isystem/sysroot/include/wasm32-wasip1", "-isystem/sysroot/include",
 ];
 const PROBE = `#include <bits/stdc++.h>\nusing namespace std;\nint main(){vector<int> v{3,1,2};sort(v.begin(),v.end());cout<<v[0];return 0;}\n`;
 
