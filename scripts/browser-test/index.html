@@ -1,8 +1,8 @@
 <!doctype html>
 <html>
-<head><meta charset="utf-8"><title>clangd harness</title></head>
+<head><meta charset="utf-8"><title>clangd test</title></head>
 <body>
-<pre id="log">starting…</pre>
+<pre id="log">starting</pre>
 <script type="module">
 const log = m => { document.getElementById('log').textContent += '\n' + m; console.log(m); };
 window.__done = null;
@@ -76,7 +76,7 @@ try {
 		onAbort: w => log('clangd aborted: ' + w)
 	});
 	const tInst = performance.now() - t0;
-	log(`instantiated in ${tInst.toFixed(0)}ms`);
+	log(`instantiate ${tInst.toFixed(0)}ms`);
 
 	clangd.FS.mkdir(WORKSPACE);
 	clangd.FS.writeFile(FILE, SOURCE);
@@ -99,7 +99,7 @@ try {
 	const t2 = performance.now();
 	const diag = await waitFor(m => m.method === 'textDocument/publishDiagnostics', 'diagnostics');
 	const tDiag = performance.now() - t2;
-	log(`diagnostics: ${diag.params.diagnostics.length} item(s) in ${tDiag.toFixed(0)}ms`);
+	log(`diagnostics: ${diag.params.diagnostics.length} item(s), ${tDiag.toFixed(0)}ms`);
 	for (const d of diag.params.diagnostics.slice(0,3)) log('  diag: ' + d.message.slice(0,120));
 
 	let items = [], labels = [], ok = false, tComp = 0, attempts = 0;
@@ -117,7 +117,7 @@ try {
 		if (ok) break;
 		await new Promise(r => setTimeout(r, 1500));
 	}
-	log(`completion: ${items.length} items in ${tComp.toFixed(0)}ms after ${attempts} attempt(s)`);
+	log(`completion: ${items.length} items, ${tComp.toFixed(0)}ms, ${attempts} attempt(s)`);
 	log('sample: ' + labels.slice(0, 10).join(', '));
 	log(ok ? 'PASS' : 'FAIL: no vector members');
 	window.__result = {ok, tInst, tInit, tDiag, tComp, attempts, items: items.length, sample: labels.slice(0, 12)};

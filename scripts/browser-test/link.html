@@ -1,8 +1,8 @@
 <!doctype html>
 <html>
-<head><meta charset="utf-8"><title>link harness</title></head>
+<head><meta charset="utf-8"><title>link test</title></head>
 <body>
-<pre id="log">starting…</pre>
+<pre id="log">starting</pre>
 <script type="module">
 const log = m => { document.getElementById('log').textContent += '\n' + m; console.log(m); };
 window.__done = null; window.__result = null;
@@ -29,7 +29,7 @@ async function runTool(url, args, files) {
 try {
 	log('crossOriginIsolated=' + self.crossOriginIsolated);
 	const b64 = sessionStorage.getItem('obj');
-	if (!b64) throw new Error('no stashed main.o - run /compile.html first in this session');
+	if (!b64) throw new Error('no stashed main.o. run /compile.html first, same session');
 	const obj = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 	log('loaded main.o = ' + obj.length + ' bytes');
 	log('args: ' + LD_ARGS.join(' '));
@@ -37,7 +37,7 @@ try {
 	const t1 = performance.now();
 	const ld = await runTool('./llvm.js', LD_ARGS, {'/main.o': obj});
 	const tLink = performance.now() - t1;
-	log('wasm-ld exit=' + ld.code + ' in ' + tLink.toFixed(0) + 'ms');
+	log('wasm-ld exit=' + ld.code + ', ' + tLink.toFixed(0) + 'ms');
 	if (ld.err) log('lld stderr: ' + ld.err.slice(0, 600));
 
 	let bin = null;

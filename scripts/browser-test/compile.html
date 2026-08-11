@@ -1,8 +1,8 @@
 <!doctype html>
 <html>
-<head><meta charset="utf-8"><title>clang compile harness</title></head>
+<head><meta charset="utf-8"><title>clang compile test</title></head>
 <body>
-<pre id="log">starting…</pre>
+<pre id="log">starting</pre>
 <script type="module">
 const log = m => { document.getElementById('log').textContent += '\n' + m; console.log(m); };
 window.__done = null; window.__result = null;
@@ -48,7 +48,7 @@ try {
 	const t0 = performance.now();
 	const cc = await runTool('./llvm.js', CC1_ARGS('c++20'), {'/main.cpp': SOURCE});
 	const tCompile = performance.now() - t0;
-	log(`clang exit=${cc.code} in ${tCompile.toFixed(0)}ms`);
+	log(`clang exit=${cc.code}, ${tCompile.toFixed(0)}ms`);
 	if (cc.err) log('clang stderr: ' + cc.err.slice(0, 600));
 	let obj = null;
 	try { obj = cc.mod.FS.readFile('/main.o'); log(`main.o = ${obj.length} bytes`); }
@@ -56,7 +56,7 @@ try {
 
 	if (obj) {
 		sessionStorage.setItem('obj', btoa(String.fromCharCode(...obj)));
-		log('stashed main.o for the link phase');
+		log('stashed main.o for link phase');
 	}
 	window.__result = {ok: !!obj && cc.code === 0, tCompile, objBytes: obj?.length ?? 0, clangErr: cc.err.slice(0, 400)};
 } catch (e) {
