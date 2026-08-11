@@ -46,7 +46,7 @@ async function runTool(url, args, files) {
 try {
 	log('crossOriginIsolated=' + self.crossOriginIsolated);
 	const t0 = performance.now();
-	const cc = await runTool('./clang.js', CC1_ARGS('c++20'), {'/main.cpp': SOURCE});
+	const cc = await runTool('./llvm.js', CC1_ARGS('c++20'), {'/main.cpp': SOURCE});
 	const tCompile = performance.now() - t0;
 	log(`clang exit=${cc.code} in ${tCompile.toFixed(0)}ms`);
 	if (cc.err) log('clang stderr: ' + cc.err.slice(0, 600));
