@@ -40,6 +40,20 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
+      # Key is llvm-emsdk-wasi-<setup.sh hash>. A key: expression cannot source a
+      # shell file, hence the outputs hop. Keyed on the version values rather than
+      # hashFiles(common.sh) so that editing CMake flags or paths in there does not
+      # throw away a 1 GiB cache they cannot affect.
+      - name: versions
+        id: v
+        run: |
+          source scripts/common.sh
+          {
+            echo "llvm=$LLVM_VER"
+            echo "emsdk=$EMSDK_VER"
+            echo "wasi=$WASI_SDK_VER"
+          } >> "$GITHUB_OUTPUT"
+
       - name: cache sources + emsdk + stage1
         uses: actions/cache@v4
         with:
@@ -47,7 +61,7 @@ jobs:
             /home/runner/llvm-build/llvm-project
             /home/runner/llvm-build/emsdk
             /home/runner/llvm-build/stage1
-          key: toolchain-${{ hashFiles('scripts/common.sh', 'scripts/setup.sh') }}
+          key: ${{ steps.v.outputs.llvm }}-${{ steps.v.outputs.emsdk }}-${{ steps.v.outputs.wasi }}-${{ hashFiles('scripts/setup.sh') }}
 
       # tsc for emcc --emit-tsd, Playwright for the gates, wasi shim for link.html
       - name: install deps
