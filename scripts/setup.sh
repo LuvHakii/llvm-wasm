@@ -1,18 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-LLVM_VER=22.1.8
-EMSDK_VER=4.0.22
-WASI_SDK_MAJOR=33
-WASI_SDK_VER=33.0
-ROOT=${ROOT:-$HOME/llvm-build}
-JOBS=${JOBS:-8}
-
-if [ -n "$GITHUB_ENV" ]; then
-  echo "LLVM_VER=$LLVM_VER" >> "$GITHUB_ENV"
-  echo "EMSDK_VER=$EMSDK_VER" >> "$GITHUB_ENV"
-  echo "WASI_SDK_VER=$WASI_SDK_VER" >> "$GITHUB_ENV"
-fi
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 mkdir -p $ROOT
 

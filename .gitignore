@@ -4,3 +4,4 @@ dist/
 *.wasm
 *.log
 node_modules
+release/

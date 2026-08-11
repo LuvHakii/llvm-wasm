@@ -1,17 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-LLVM_VER=22.1.8
-LLVM_VER_MAJOR=22
-ROOT=${ROOT:-$HOME/llvm-build}
-REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-JOBS=${JOBS:-8}
-
-SRC=$ROOT/llvm-project
-SYSROOT=$ROOT/wasi-sysroot
-NATIVE=$ROOT/stage1
-BUILD=$ROOT/stage2
-
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 source $ROOT/emsdk/emsdk_env.sh >/dev/null 2>&1
 export PATH="$REPO/node_modules/.bin:$PATH"
 
@@ -24,28 +14,7 @@ else
 fi
 
 COMMON=(
-  -G Ninja -S $SRC/llvm
-  -DCMAKE_CXX_FLAGS="-pthread -Dwait4=__syscall_wait4"
-  -DCMAKE_BUILD_TYPE=MinSizeRel
-  -DLLVM_TARGET_ARCH=wasm32-emscripten
-  -DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-wasi
-  -DLLVM_TARGETS_TO_BUILD=WebAssembly
-  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld"
-  -DLLVM_TABLEGEN=$NATIVE/bin/llvm-tblgen
-  -DCLANG_TABLEGEN=$NATIVE/bin/clang-tblgen
-  -DLLVM_BUILD_STATIC=ON
-  -DLLVM_INCLUDE_EXAMPLES=OFF
-  -DLLVM_INCLUDE_TESTS=OFF
-  -DLLVM_INCLUDE_BENCHMARKS=OFF
-  -DLLVM_ENABLE_BACKTRACES=OFF
-  -DLLVM_ENABLE_UNWIND_TABLES=OFF
-  -DLLVM_ENABLE_CRASH_OVERRIDES=OFF
-  -DCLANG_ENABLE_STATIC_ANALYZER=OFF
-  -DLLVM_ENABLE_TERMINFO=OFF
-  -DLLVM_ENABLE_PIC=OFF
-  -DLLVM_ENABLE_ZLIB=OFF
-  -DCLANG_ENABLE_ARCMT=OFF
-  -DLLVM_PARALLEL_LINK_JOBS=1
+  "${COMMON_CMAKE[@]}"
   -DCLANGD_TIDY_CHECKS=OFF
   -DCLANGD_BUILD_XPC=OFF
   -DCLANGD_ENABLE_REMOTE=OFF
