@@ -42,10 +42,3 @@ COMMON_CMAKE=(
   -DCLANG_ENABLE_ARCMT=OFF
   -DLLVM_PARALLEL_LINK_JOBS=1
 )
-
-# CI reads these back for versions.json and the release notes.
-if [ -n "$GITHUB_ENV" ]; then
-  echo "LLVM_VER=$LLVM_VER" >> "$GITHUB_ENV"
-  echo "EMSDK_VER=$EMSDK_VER" >> "$GITHUB_ENV"
-  echo "WASI_SDK_VER=$WASI_SDK_VER" >> "$GITHUB_ENV"
-fi
