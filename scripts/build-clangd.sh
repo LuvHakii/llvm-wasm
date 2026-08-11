@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-LLVM_VER=21.1.0
-LLVM_VER_MAJOR=21
+LLVM_VER=22.1.8
+LLVM_VER_MAJOR=22
 ROOT=${ROOT:-$HOME/llvm-build}
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 JOBS=${JOBS:-8}

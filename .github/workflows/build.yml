@@ -43,7 +43,7 @@ jobs:
             /home/runner/llvm-build/llvm-project
             /home/runner/llvm-build/emsdk
             /home/runner/llvm-build/stage1
-          key: toolchain-llvm21.1.0-emsdk4.0.22-wasi33-${{ hashFiles('scripts/setup.sh') }}
+          key: toolchain-llvm22.1.8-emsdk4.0.22-wasi33-${{ hashFiles('scripts/setup.sh') }}
 
       - name: Install node deps (tsc for --emit-tsd, harness deps)
         run: |
