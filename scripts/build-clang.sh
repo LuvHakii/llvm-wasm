@@ -29,10 +29,12 @@ echo "[$(date +%T)] reconfiguring stage2 for merged clang+lld multicall (no ASYN
 emcmake cmake "${COMMON_CMAKE[@]}" -B $BUILD \
   -DLLVM_TOOL_LLVM_DRIVER_BUILD=ON \
   -DLLVM_DISTRIBUTION_COMPONENTS="clang;lld" \
-  -DCMAKE_EXE_LINKER_FLAGS="-pthread -s ENVIRONMENT=worker -s NO_INVOKE_RUN -s EXIT_RUNTIME \
--s INITIAL_MEMORY=1GB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=4GB -s STACK_SIZE=1MB \
+  -DCMAKE_CXX_FLAGS="-Dwait4=__syscall_wait4" \
+  -DLLVM_ENABLE_THREADS=OFF \
+  -DCMAKE_EXE_LINKER_FLAGS="-s ENVIRONMENT=worker -s NO_INVOKE_RUN -s EXIT_RUNTIME \
+-s INITIAL_MEMORY=256MB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=1GB -s STACK_SIZE=1MB \
 -s EXPORTED_RUNTIME_METHODS=FS,callMain -s MODULARIZE -s EXPORT_ES6 -s WASM_BIGINT \
--s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed \
+-s EXPORTED_FUNCTIONS=_main \
 --emit-tsd=llvm.d.ts \
 --embed-file=$SLIM/include@/sysroot/include \
 --embed-file=$SLIM/lib@/sysroot/lib"
