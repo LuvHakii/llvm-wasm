@@ -47,7 +47,7 @@ echo "  slim sysroot: $(du -sh $SLIM/include | cut -f1) (was $(du -sh $SYSROOT/i
 echo "[$(date +%T)] pass 2: configure (real link flags)"
 emcmake cmake "${COMMON[@]}" -B $BUILD \
   -DCMAKE_EXE_LINKER_FLAGS="-pthread -s ENVIRONMENT=worker -s NO_INVOKE_RUN -s EXIT_RUNTIME \
--s INITIAL_MEMORY=2GB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=4GB -s STACK_SIZE=256kB \
+-s INITIAL_MEMORY=512MB -s ALLOW_MEMORY_GROWTH -s MAXIMUM_MEMORY=1GB -s STACK_SIZE=256kB \
 -s EXPORTED_RUNTIME_METHODS=FS,callMain -s MODULARIZE -s EXPORT_ES6 -s WASM_BIGINT \
 -s ASYNCIFY -s PTHREAD_POOL_SIZE='Math.max(navigator.hardwareConcurrency, 8)' \
 -s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed \
