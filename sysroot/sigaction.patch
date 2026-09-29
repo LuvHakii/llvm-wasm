@@ -1,12 +1,14 @@
+diff -ruN a/include/wasm32-wasip1/signal.h b/include/wasm32-wasip1/signal.h
 --- a/include/wasm32-wasip1/signal.h
 +++ b/include/wasm32-wasip1/signal.h
-@@ -321,6 +321,43 @@
+@@ -321,6 +321,47 @@
  void (*signal(int, void (*)(int)))(int);
  int raise(int);
  
 +#include <errno.h>
 +
-+typedef struct { unsigned char __bits[16]; } sigset_t;
++#define __NEED_sigset_t
++#include <bits/alltypes.h>
 +
 +struct sigaction {
 +	void (*sa_handler)(int);
@@ -20,11 +22,14 @@
 +#define SIG_UNBLOCK 1
 +#define SIG_SETMASK 2
 +
++#define __SIGBIT(n) (1UL << (((n) - 1) % (8 * sizeof(long))))
++#define __SIGWORD(s, n) ((s)->__bits[((n) - 1) / (8 * sizeof(long))])
++
 +static inline int sigemptyset(sigset_t *s) { __builtin_memset(s, 0, sizeof *s); return 0; }
 +static inline int sigfillset(sigset_t *s) { __builtin_memset(s, 0xff, sizeof *s); return 0; }
-+static inline int sigaddset(sigset_t *s, int n) { s->__bits[(n - 1) / 8] |= 1 << ((n - 1) % 8); return 0; }
-+static inline int sigdelset(sigset_t *s, int n) { s->__bits[(n - 1) / 8] &= ~(1 << ((n - 1) % 8)); return 0; }
-+static inline int sigismember(const sigset_t *s, int n) { return (s->__bits[(n - 1) / 8] >> ((n - 1) % 8)) & 1; }
++static inline int sigaddset(sigset_t *s, int n) { __SIGWORD(s, n) |= __SIGBIT(n); return 0; }
++static inline int sigdelset(sigset_t *s, int n) { __SIGWORD(s, n) &= ~__SIGBIT(n); return 0; }
++static inline int sigismember(const sigset_t *s, int n) { return (__SIGWORD(s, n) & __SIGBIT(n)) != 0; }
 +static inline int sigprocmask(int how, const sigset_t *set, sigset_t *old) { if (old) sigemptyset(old); return 0; }
 +
 +static inline int sigaction(int sig, const struct sigaction *act, struct sigaction *old) {
@@ -44,3 +49,15 @@
  #ifdef __wasilibc_unmodified_upstream /* WASI has no sigtimedwait */
  #if _REDIR_TIME64
  #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
+diff -ruN a/include/wasm32-wasip1/__typedef_sigset_t.h b/include/wasm32-wasip1/__typedef_sigset_t.h
+--- a/include/wasm32-wasip1/__typedef_sigset_t.h
++++ b/include/wasm32-wasip1/__typedef_sigset_t.h
+@@ -1,7 +1,6 @@
+ #ifndef __wasilibc___typedef_sigset_t_h
+ #define __wasilibc___typedef_sigset_t_h
+ 
+-/* TODO: This is just a placeholder for now. Keep this in sync with musl. */
+-typedef unsigned char sigset_t;
++typedef struct __sigset_t { unsigned long __bits[128 / sizeof(long)]; } sigset_t;
+ 
+ #endif
