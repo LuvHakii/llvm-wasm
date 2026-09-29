@@ -125,9 +125,9 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   `thisProgram: '/usr/bin/clang-format'`.
 - ThinLTO (`LLVM_ENABLE_LTO=Thin`) on both builds. `Release` (-O2) blows the size
   budget; ThinLTO keeps `-Os` and inlines and strips across libraries instead.
-- clangd links mimalloc, the llvm multicall keeps dlmalloc. mimalloc's per-thread
-  heaps remove dlmalloc's global lock, which clangd's thread pool contends on; it costs
-  code and memory, and the single-threaded compiler has no contention to fix.
+- dlmalloc for both, not mimalloc. On clangd mimalloc was no faster and wrote
+  ~100 MB more memory: per-thread heaps keep each thread's peak, wasm memory never
+  shrinks, and Emscripten reserves its arenas 64 MiB at a time (192 -> 574 MB).
 - Two clangd builds, `clangd-jspi` and `clangd-asyncify`, same objects linked twice
   (ThinLTO cache, so the second link skips codegen). The stdin wait needs a
   suspend; JSPI does it in the engine, Asyncify rewrites the wasm: 9.6 vs 14.9 MB

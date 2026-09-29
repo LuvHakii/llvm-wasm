@@ -11,7 +11,7 @@ const linker = [
 	"-pthread", "-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
 	"-s INITIAL_MEMORY=192MB", "-s ALLOW_MEMORY_GROWTH", "-s MAXIMUM_MEMORY=1GB", "-s STACK_SIZE=256kB",
 	"-s EXPORTED_RUNTIME_METHODS=FS,callMain", "-s MODULARIZE", "-s EXPORT_ES6",
-	"-s MALLOC=mimalloc", "-s PTHREAD_POOL_SIZE='Math.max(navigator.hardwareConcurrency, 8)'",
+	"-s PTHREAD_POOL_SIZE='Math.max(navigator.hardwareConcurrency, 8)'",
 	"-s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed",
 	"-Wl,--thinlto-cache-dir=lto.cache",
 ].join(" ");
