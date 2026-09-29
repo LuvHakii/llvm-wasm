@@ -39,6 +39,7 @@ export const COMMON_CMAKE = [
 	"-DLLVM_ENABLE_ZLIB=OFF",
 	"-DCLANG_ENABLE_ARCMT=OFF",
 	"-DLLVM_PARALLEL_LINK_JOBS=1",
+	"-DLLVM_ENABLE_LTO=Thin",
 ];
 
 export async function emenv() {

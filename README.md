@@ -123,6 +123,11 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 - clang-format is in the multicall via `patches/clang-format-driver.patch`
   (`GENERATE_DRIVER`, `main` becomes `clang_format_main`). Run it as
   `thisProgram: '/usr/bin/clang-format'`.
+- ThinLTO (`LLVM_ENABLE_LTO=Thin`) on both builds. `Release` (-O2) blows the size
+  budget; ThinLTO keeps `-Os` and inlines and strips across libraries instead.
+- clangd links mimalloc, the llvm multicall keeps dlmalloc. mimalloc's per-thread
+  heaps remove dlmalloc's global lock, which clangd's thread pool contends on; it costs
+  code and memory, and the single-threaded compiler has no contention to fix.
 - `JOBS` is 8, not nproc, and `LLVM_PARALLEL_LINK_JOBS=1`. Link steps eat
   memory, dev box has ~10 GB free.
 - Compiled programs get `std::thread` that links and then traps at runtime, and
