@@ -63,6 +63,8 @@ try {
 	log({crossOriginIsolated: self.crossOriginIsolated});
 	const t0 = performance.now();
 	const {default: Clangd} = await import('./clangd.js');
+	const {parseTar} = await import('/node_modules/nanotar/dist/index.mjs');
+	const sysroot = parseTar(await (await fetch('./include.tar')).arrayBuffer());
 	let pending = [];
 	let errLine = '';
 	let stdoutBytes = 0;
@@ -78,6 +80,10 @@ try {
 	const tInst = performance.now() - t0;
 	log({tInst});
 
+	for (const {name, type, data} of sysroot) {
+		if (type === 'directory') clangd.FS.mkdirTree(`/${name}`);
+		else if (type === 'file') clangd.FS.createDataFile(`/${name}`, null, data ?? new Uint8Array(0), true, false, true);
+	}
 	clangd.FS.mkdir(WORKSPACE);
 	clangd.FS.writeFile(FILE, SOURCE);
 	let pch = null;
@@ -92,9 +98,7 @@ try {
 	}
 	clangd.FS.writeFile(`${WORKSPACE}/.clangd`, JSON.stringify({CompileFlags: {Add: [
 		'--target=wasm32-wasip1', '-std=c++20', '-fwasm-exceptions',
-		...(pch ? ['-include-pch', '/stdc++.pch', '-Xclang', '-fno-validate-pch'] : []),
-		'-isystem/usr/include/wasm32-wasip1/eh/c++/v1', '-isystem/usr/include/c++/v1',
-		'-isystem/usr/include/wasm32-wasip1', '-isystem/usr/include'
+		...(pch ? ['-include-pch', '/stdc++.pch', '-Xclang', '-fno-validate-pch'] : [])
 	]}}));
 	clangd.callMain(['--background-index=false']);
 

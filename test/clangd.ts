@@ -13,7 +13,7 @@ const server = Bun.serve({
 	async fetch(req) {
 		const path = new URL(req.url).pathname;
 		const name = path === '/' ? '/clangd.html' : path;
-		for (const dir of [import.meta.dir, DIST]) {
+		for (const dir of [import.meta.dir, DIST, resolve(import.meta.dir, '..')]) {
 			const file = Bun.file(dir + name);
 			if (await file.exists()) return new Response(file, {headers: HEADERS});
 		}

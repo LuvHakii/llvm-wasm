@@ -1,23 +1,20 @@
 import {ConsoleStdout, WASI} from "@bjorn3/browser_wasi_shim";
 import {resolve} from "node:path";
+import {parseTar} from "nanotar";
 
 const DIST = resolve(process.argv[2] ?? "./dist");
 const STDS = ["c++11", "c++14", "c++17", "c++20", "c++23"];
-const SHIM = "/sysroot/include/wasm32-wasip1/eh/c++/v1/bits/stdc++.h";
-const BASE = [
-	"-fintegrated-cc1", "--target=wasm32-wasip1", "--sysroot=/sysroot", "-O0", "-fwasm-exceptions",
-	"-mllvm", "-wasm-use-legacy-eh=false",
-	"-isystem/sysroot/include/wasm32-wasip1/eh/c++/v1", "-isystem/sysroot/include/c++/v1",
-	"-isystem/sysroot/include/wasm32-wasip1", "-isystem/sysroot/include",
-];
-const LD = [
-	"--threads=1", "-m", "wasm32", "-L/sysroot/lib/wasm32-wasip1/eh", "-L/sysroot/lib/wasm32-wasip1",
-	"/sysroot/lib/wasm32-wasip1/crt1.o", "/main.o",
-];
+const SHIM = "/include/c++/v1/bits/stdc++.h";
+const BASE = ["-fintegrated-cc1", "--target=wasm32-wasip1", "-O0", "-fwasm-exceptions", "-mllvm", "-wasm-use-legacy-eh=false"];
+const LD = ["--threads=1", "-m", "wasm32", "-L/lib/wasm32-wasip1", "/lib/wasm32-wasip1/crt1.o", "/main.o"];
 const LIBS = ["-lc", "-lc++", "-lc++abi", "-lunwind", "-lclang_rt.builtins", "-o", "/main.wasm"];
 const PROBE = `#include <bits/stdc++.h>\nusing namespace std;\nint main(){vector<int> v{3,1,2};sort(v.begin(),v.end());try{throw runtime_error("boom");}catch(const exception&e){cout<<v[0]<<v[1]<<v[2]<<' '<<e.what();}}\n`;
 
 const {default: Llvm} = await import(`${DIST}/llvm.js`);
+const SYSROOT = [
+	...parseTar(await Bun.file(`${DIST}/include.tar`).arrayBuffer()),
+	...parseTar(await Bun.file(`${DIST}/lib.tar`).arrayBuffer()),
+];
 
 async function tool(name: string, args: string[], files: Record<string, any>, out: string) {
 	let err = "";
@@ -25,6 +22,10 @@ async function tool(name: string, args: string[], files: Record<string, any>, ou
 		thisProgram: `/usr/bin/${name}`, noInitialRun: true,
 		print: () => {}, printErr: (t: string) => { err += t + "\n"; },
 	});
+	for (const {name, type, data} of SYSROOT) {
+		if (type === "directory") m.FS.mkdirTree(`/${name}`);
+		else if (type === "file") m.FS.createDataFile(`/${name}`, null, data ?? new Uint8Array(0), true, false, true);
+	}
 	for (const [path, data] of Object.entries(files)) m.FS.writeFile(path, data);
 	const t = performance.now();
 	let code = 0;
@@ -62,8 +63,6 @@ async function check(name: string, f: () => Promise<object>) {
 
 for (const std of STDS) await check(std, async () => {
 	const gen = await tool("clang", [...BASE, "-x", "c++-header", `-std=${std}`, "-fpch-instantiate-templates", SHIM, "-o", "/stdc++.pch"], {}, "/stdc++.pch");
-	// -fno-validate-pch is mandatory since --embed-file restamps the sysroot mtime per
-	// instance, so clang(d) would reject it.
 	const use = await tool("clang",
 		[...BASE, `-std=${std}`, "-Xclang", "-fno-validate-pch", "-include-pch", "/stdc++.pch",
 			"-c", "/probe.cpp", "-o", "/main.o"],

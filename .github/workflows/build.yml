@@ -77,7 +77,7 @@ jobs:
           for t in clangd llvm; do
             cp dist/$t.js dist/$t.d.ts dist/$t.wasm release/
           done
-          cp dist/pch/*.pch release/
+          cp dist/include.tar dist/lib.tar dist/pch/*.pch release/
           printf '{"llvm":"%s","emscripten":"%s","wasiSdk":"%s"}' \
             "$LLVM_VER" "$EMSDK_VER" "$WASI_SDK_VER" > release/versions.json
           ls -la release/

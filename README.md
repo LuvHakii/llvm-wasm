@@ -12,7 +12,7 @@
 
 ```
 scripts/             build pipeline (Bun TS): setup, clangd, clang multicall, PCHs + gate
-sysroot/             added to the embedded sysroot: bits/stdc++.h, tty.patch, tty.c
+sysroot/             additions to include.tar / lib.tar: bits/stdc++.h, tty.patch, tty.c
 patches/             LLVM source patches
 test/                clangd LSP gate in Chromium
 ```
@@ -21,7 +21,7 @@ test/                clangd LSP gate in Chromium
 $ROOT                default ~/llvm-build, override for a bigger disk. never /tmp, tmpfs eats RAM
 $ROOT/llvm-project   shallow llvmorg-22.1.8 clone
 $ROOT/emsdk          pinned Emscripten SDK
-$ROOT/wasi-sysroot   WASI SDK 33 sysroot (patched with bits/stdc++.h)
+$ROOT/wasi-sysroot   WASI SDK 33 sysroot, pristine
 $ROOT/stage1         native llvm-tblgen + clang-tblgen (~67 MB)
 $ROOT/stage2         Emscripten cross build
 ```
@@ -30,8 +30,8 @@ $ROOT/stage2         Emscripten cross build
 
 ```bash
 bun scripts/setup.ts            # sources, emsdk, wasi-sysroot, native tblgen
-bun scripts/build-clangd.ts     # pass 1 builtin headers, pass 2 clangd
-bun scripts/build-clang.ts      # llvm multicall (clang, wasm-ld, clang-format), same tree
+bun scripts/build-clangd.ts     # clangd
+bun scripts/build-clang.ts      # llvm multicall (clang, wasm-ld, clang-format), include.tar, lib.tar
 bun scripts/gen-pch.ts ./dist   # five stdc++ PCHs + compile/link/run gate, no browser
 bun test/clangd.ts ./dist       # clangd LSP gate, Chromium
 ```
@@ -76,9 +76,11 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   `noeh` libc++. Dropping the rest cuts header mass 7x and `clangd.wasm` 3x,
   gzip 2.2x, landing at 14.7 MiB, under the cap. `CLANGD_TIDY_CHECKS=OFF` shaves
   another 3%.
-- Include paths. libc++ is at `include/wasm32-wasip1/eh/c++/v1`, not
-  `include/c++/v1`. Wrong path, clangd drops to identifier-based completion,
-  silently.
+- Sysroot layout matches clang's WASI defaults, so no `--sysroot` or `-isystem`:
+  libc++ (eh variant) at `include/c++/v1`, clang's core + wasm builtin headers
+  (40 of ~230, the rest is other arches' intrinsics) in `include/`, libs
+  flat in `lib/wasm32-wasip1`. clang only adds the libc++ paths once it finds a
+  `v1` under the generic `include/c++/`, so libc++ must live there, not per target.
 - stdin chunking. Feed clangd discrete chunks, each followed by a `null`. A
   continuous stream leaves it blocked at zero stdout, also silent.
 - clangd needs a real browser, the compiler does not. Node has no `Worker`, so
@@ -100,10 +102,10 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   `undefined symbol: _Unwind_RaiseException`.
 - PCH must come from the `llvm.wasm` just built. clang validates a PCH against
   the compiler build, so host-generated ones die at `-include-pch`.
-- `-include-pch` still needs `-I` for the shim dir. The textual
-  `#include <bits/stdc++.h>` has to resolve, then no-ops via `#pragma once`.
-- `-Xclang -fno-validate-pch` in every consumer. `--embed-file`
-  restamps the sysroot mtime per instance, so clang rejects any PCH built by
+- `-include-pch` still needs the textual `#include <bits/stdc++.h>` to resolve,
+  then it no-ops via `#pragma once`. The shim sits in `include/c++/v1/bits`.
+- `-Xclang -fno-validate-pch` in every consumer. The host mounts
+  the sysroot fresh per instance, new mtimes, so clang rejects any PCH built by
   another one: *"mtime changed"*. Skip the flag and every PCH is dead weight.
   `gen-pch.ts` compiles, links and runs a probe with each one before writing it.
 - clang and lld never share a page or worker. Both at once crashed Chromium at
@@ -112,8 +114,12 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 - Emscripten has no `fork`/`exec`, clang cannot spawn `wasm-ld`. No LLVM patch
   needed: run clang `-###`, it prints the commands it would run, then `callMain`
   each. Exactly two, `clang -cc1 ...` then `wasm-ld ...`.
-- ninja will not relink when only the *contents* of an `--embed-file` dir
-  change. Path unchanged, output looks current. Delete the binary to force it.
+- Sysroot ships as `include.tar` (headers, clangd + clang) and `lib.tar` (libs,
+  wasm-ld), not inside the wasm. The host mounts them at `/` on each instance
+  before `callMain`, e.g. nanotar `parseTar` then `FS.createDataFile(path, null,
+  data, true, false, true)`. `canOwn` keeps files as views into the tar, outside
+  linear memory, one copy shared by every instance. Not `--preload-file`: its
+  index lives in each `.js` and it fetches by bare name, which hangs under bun.
 - clang-format is in the multicall via `patches/clang-format-driver.patch`
   (`GENERATE_DRIVER`, `main` becomes `clang_format_main`). Run it as
   `thisProgram: '/usr/bin/clang-format'`.
@@ -123,9 +129,9 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   `std::filesystem` only with a preopened dir. `throw`/`catch`, `std::mutex`,
   `std::atomic` and deferred `std::async` all work.
 
-- Terminal support. wasi-libc ships no `termios.h`. Both builds apply
+- Terminal support. wasi-libc ships no `termios.h`. `build-clang.ts` applies
   `sysroot/tty.patch` (adds `termios.h`, `TCGETS`/`TCSETS`/`TIOCGWINSZ`
-  and `struct winsize` in `sys/ioctl.h`) to the slim sysroot, and `build-clang.ts`
+  and `struct winsize` in `sys/ioctl.h`) to the slim sysroot and
   adds `libtty.a` (`__wrap_ioctl`, from `sysroot/tty.c`). Link with `-ltty
   --wrap=ioctl`; the host must provide wasm imports `tty.tcgets`, `tty.tcsets` and
   `tty.winsize`. The wire layout is musl `struct termios`: `c_cc` at offset 17, 60
