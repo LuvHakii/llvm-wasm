@@ -74,7 +74,7 @@ jobs:
       - name: stage release
         run: |
           mkdir -p release
-          for t in clangd llvm; do
+          for t in clangd-jspi clangd-asyncify llvm; do
             cp dist/$t.js dist/$t.d.ts dist/$t.wasm release/
           done
           cp dist/include.tar dist/lib.tar dist/pch/*.pch release/

@@ -128,6 +128,11 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 - clangd links mimalloc, the llvm multicall keeps dlmalloc. mimalloc's per-thread
   heaps remove dlmalloc's global lock, which clangd's thread pool contends on; it costs
   code and memory, and the single-threaded compiler has no contention to fix.
+- Two clangd builds, `clangd-jspi` and `clangd-asyncify`, same objects linked twice
+  (ThinLTO cache, so the second link skips codegen). The stdin wait needs a
+  suspend; JSPI does it in the engine, Asyncify rewrites the wasm: 9.6 vs 14.9 MB
+  gzip, preamble 4.0 s vs 8.0 s. Pick `typeof WebAssembly.Suspending === 'function' ?
+  'clangd-jspi.js' : 'clangd-asyncify.js'`. JSPI's `callMain` returns a Promise.
 - `JOBS` is 8, not nproc, and `LLVM_PARALLEL_LINK_JOBS=1`. Link steps eat
   memory, dev box has ~10 GB free.
 - Compiled programs get `std::thread` that links and then traps at runtime, and

@@ -27,11 +27,13 @@ page.on('console', m => Promise.all(m.args().map(a => a.jsonValue())).then(v => 
 page.on('pageerror', e => console.error(e));
 
 try {
-	await page.goto(server.url.href, {waitUntil: 'domcontentloaded'});
-	await page.waitForFunction(() => window.__done === true, null, {timeout: 600000});
-	const result = await page.evaluate(() => window.__result);
-	console.dir(result, {depth: null});
-	process.exitCode = result?.ok ? 0 : 1;
+	for (const v of ['jspi', 'asyncify']) {
+		await page.goto(`${server.url.href}?v=${v}`, {waitUntil: 'domcontentloaded'});
+		await page.waitForFunction(() => window.__done === true, null, {timeout: 600000});
+		const result = await page.evaluate(() => window.__result);
+		console.dir({v, ...result}, {depth: null});
+		if (!result?.ok) process.exitCode = 1;
+	}
 } catch (e) {
 	console.error(e);
 	process.exitCode = 1;

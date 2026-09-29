@@ -62,7 +62,7 @@ const waitFor = async (pred, label, ms = 60000) => {
 try {
 	log({crossOriginIsolated: self.crossOriginIsolated});
 	const t0 = performance.now();
-	const {default: Clangd} = await import('./clangd.js');
+	const {default: Clangd} = await import(`./clangd-${new URLSearchParams(location.search).get('v')}.js`);
 	const {parseTar} = await import('/node_modules/nanotar/dist/index.mjs');
 	const sysroot = parseTar(await (await fetch('./include.tar')).arrayBuffer());
 	let pending = [];
