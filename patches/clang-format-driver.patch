@@ -11,7 +11,7 @@ index 1c61a3c..676a442 100644
  
  set(CLANG_FORMAT_LIB_DEPS
 diff --git a/clang/tools/clang-format/ClangFormat.cpp b/clang/tools/clang-format/ClangFormat.cpp
-index 12ac8a3..bc7ed91 100644
+index de513d9..44a7610 100644
 --- a/clang/tools/clang-format/ClangFormat.cpp
 +++ b/clang/tools/clang-format/ClangFormat.cpp
 @@ -24,6 +24,7 @@
@@ -23,7 +23,7 @@ index 12ac8a3..bc7ed91 100644
  #include <fstream>
  
 @@ -665,7 +666,7 @@ static bool isIgnored(StringRef FilePath) {
-   return false;
+   return IsIgnored;
  }
  
 -int main(int argc, const char **argv) {

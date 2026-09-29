@@ -2,9 +2,9 @@ import {$} from "bun";
 import {homedir} from "node:os";
 import {resolve} from "node:path";
 
-export const LLVM_VER = "22.1.8";
+export const LLVM_VER = "23.1.2";
 export const EMSDK_VER = "4.0.22";
-export const WASI_SDK_MAJOR = "33";
+export const WASI_SDK_MAJOR = "34";
 export const WASI_SDK_VER = `${WASI_SDK_MAJOR}.0`;
 
 export const ROOT = process.env.ROOT ?? `${homedir()}/llvm-build`;
@@ -37,7 +37,6 @@ export const COMMON_CMAKE = [
 	"-DLLVM_ENABLE_TERMINFO=OFF",
 	"-DLLVM_ENABLE_PIC=OFF",
 	"-DLLVM_ENABLE_ZLIB=OFF",
-	"-DCLANG_ENABLE_ARCMT=OFF",
 	"-DLLVM_PARALLEL_LINK_JOBS=1",
 	"-DLLVM_ENABLE_LTO=Thin",
 ];

@@ -4,9 +4,9 @@
 
 | component | version |
 |---|---|
-| LLVM | `llvmorg-22.1.8` |
+| LLVM | `llvmorg-23.1.2` |
 | Emscripten | 4.0.22 |
-| WASI SDK sysroot | 33 |
+| WASI SDK sysroot | 34 |
 
 ## Layout
 
@@ -19,9 +19,9 @@ test/                clangd LSP gate in Chromium
 
 ```
 $ROOT                default ~/llvm-build, override for a bigger disk. never /tmp, tmpfs eats RAM
-$ROOT/llvm-project   shallow llvmorg-22.1.8 clone
+$ROOT/llvm-project   shallow llvmorg-23.1.2 clone
 $ROOT/emsdk          pinned Emscripten SDK
-$ROOT/wasi-sysroot   WASI SDK 33 sysroot, pristine
+$ROOT/wasi-sysroot   WASI SDK 34 sysroot, pristine
 $ROOT/stage1         native llvm-tblgen + clang-tblgen (~67 MB)
 $ROOT/stage2         Emscripten cross build
 ```
@@ -94,9 +94,9 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   only once lld is far enough to write output, so an early exit looks fine.
   Links are 0.4s, so if parallel ever matters, add a pool instead.
 - `-lclang_rt.builtins`. Else `undefined symbol: __multi3`. Separate wasi-sdk
-  asset (`libclang_rt-33.0+m.tar.gz`), not in the sysroot tarball.
+  asset (`libclang_rt-34.0.tar.gz`), not in the sysroot tarball.
 - `-mllvm -wasm-use-legacy-eh=false`. Our clang defaults to legacy EH, wasi-sdk
-  33 libc++ uses exnref. Link succeeds, then `WebAssembly.compile` refuses:
+  34 libc++ uses exnref. Link succeeds, then `WebAssembly.compile` refuses:
   *"module uses a mix of legacy and new exception handling instructions"*.
 - `-lunwind` with `-fwasm-exceptions`, not auto-linked. Without it:
   `undefined symbol: _Unwind_RaiseException`.

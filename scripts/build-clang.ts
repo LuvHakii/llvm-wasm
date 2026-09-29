@@ -61,8 +61,8 @@ const emclang = `${ROOT}/emsdk/upstream/bin`;
 await $`${emclang}/clang --target=wasm32-wasip1 --sysroot=${SLIM} -O2 -c ${REPO}/sysroot/tty.c -o ${ROOT}/tty.o`;
 await $`${emclang}/llvm-ar rcs ${LIB}/libtty.a ${ROOT}/tty.o`;
 
-const RT = `${ROOT}/libclang_rt-${WASI_SDK_VER}+m/wasm32-unknown-wasi/libclang_rt.builtins.a`;
-if (!existsSync(RT)) await extractTar(`https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_MAJOR}/libclang_rt-${WASI_SDK_VER}+m.tar.gz`, ROOT);
+const RT = `${ROOT}/libclang_rt-${WASI_SDK_VER}/wasm32-unknown-wasi/libclang_rt.builtins.a`;
+if (!existsSync(RT)) await extractTar(`https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_MAJOR}/libclang_rt-${WASI_SDK_VER}.tar.gz`, ROOT);
 cpSync(RT, `${LIB}/libclang_rt.builtins.a`);
 
 await $`tar -chf ${dist}/include.tar -C ${SLIM} include`;

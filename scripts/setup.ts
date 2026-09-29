@@ -19,9 +19,9 @@ if (!existsSync(emsdk)) {
 
 if (!existsSync(SYSROOT)) {
 	console.log(`fetch wasi-sysroot ${WASI_SDK_VER}`);
-	const url = `https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_MAJOR}/wasi-sysroot-${WASI_SDK_VER}+m.tar.gz`;
+	const url = `https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_MAJOR}/wasi-sysroot-${WASI_SDK_VER}.tar.gz`;
 	await extractTar(url, ROOT);
-	renameSync(`${ROOT}/wasi-sysroot-${WASI_SDK_VER}+m`, SYSROOT);
+	renameSync(`${ROOT}/wasi-sysroot-${WASI_SDK_VER}`, SYSROOT);
 }
 
 if (!existsSync(`${NATIVE}/bin/llvm-tblgen`) || !existsSync(`${NATIVE}/bin/clang-tblgen`)) {
