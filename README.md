@@ -109,6 +109,10 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   the sysroot fresh per instance, new mtimes, so clang rejects any PCH built by
   another one: *"mtime changed"*. Skip the flag and every PCH is dead weight.
   `gen-pch.ts` compiles, links and runs a probe with each one before writing it.
+- clangd drops `-include-pch` upstream (`Compiler.cpp` clears `ImplicitPCHInclude`),
+  so every file open re-parsed libc++: 26.5 MB preamble, 4-8 s.
+  `patches/clangd-pch.patch` keeps it; the preamble chains onto the PCH: 54 KB,
+  under 1 s. Its flags must match the PCH's, same rule as clang.
 - clang and lld never share a page or worker. Both at once crashed Chromium at
   any `INITIAL_MEMORY`. One multicall binary now, `gen-pch.ts` still gives
   each its own instance.
@@ -131,7 +135,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 - Two clangd builds, `clangd-jspi` and `clangd-asyncify`, same objects linked twice
   (ThinLTO cache, so the second link skips codegen). The stdin wait needs a
   suspend; JSPI does it in the engine, Asyncify rewrites the wasm: 9.6 vs 14.9 MB
-  gzip, preamble 4.0 s vs 8.0 s. Pick `typeof WebAssembly.Suspending === 'function' ?
+  gzip, preamble 0.7 s vs 1.4 s. Pick `typeof WebAssembly.Suspending === 'function' ?
   'clangd-jspi.js' : 'clangd-asyncify.js'`. JSPI's `callMain` returns a Promise.
 - `JOBS` is 8, not nproc, and `LLVM_PARALLEL_LINK_JOBS=1`. Link steps eat
   memory, dev box has ~10 GB free.
