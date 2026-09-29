@@ -105,7 +105,8 @@ await check("tty", async () => {
 	return {};
 });
 
-const SIGACTION = `#include <errno.h>
+const SIGACTION = `#include <sys/types.h>
+#include <errno.h>
 #include <signal.h>
 static volatile sig_atomic_t hit;
 static void h(int s) { hit = s; }
@@ -113,11 +114,12 @@ int main(void) {
 	struct sigaction sa, old;
 	sigemptyset(&sa.sa_mask);
 	sigaddset(&sa.sa_mask, SIGINT);
+	sigaddset(&sa.sa_mask, SIGWINCH);
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = h;
 	if (sigaction(SIGINT, &sa, &old) || old.sa_handler != SIG_DFL) return 1;
 	raise(SIGINT);
-	if (hit != SIGINT || !sigismember(&sa.sa_mask, SIGINT) || sigismember(&sa.sa_mask, SIGQUIT)) return 2;
+	if (hit != SIGINT || !sigismember(&sa.sa_mask, SIGINT) || sigismember(&sa.sa_mask, SIGQUIT) || !sigismember(&sa.sa_mask, SIGWINCH) || sizeof(sigset_t) != 128) return 2;
 	if (sigaction(-1, &sa, 0) != -1 || errno != EINVAL) return 3;
 	return 0;
 }
@@ -125,12 +127,6 @@ int main(void) {
 await check("sigaction", async () => {
 	const cc = await tool("clang", [...BASE, "-D_WASI_EMULATED_SIGNAL", "-c", "/s.c", "-o", "/main.o"], {"/s.c": SIGACTION}, "/main.o");
 	await run((await link(cc.file, ["-lwasi-emulated-signal"])).file, {});
-	return {};
-});
-
-await check("sigaction-cpp", async () => {
-	const src = "#include <sys/types.h>\n#include <csignal>\nint main() { struct sigaction sa; sigemptyset(&sa.sa_mask); sigaddset(&sa.sa_mask, SIGWINCH); return sigaction(SIGINT, &sa, 0) + !sigismember(&sa.sa_mask, SIGWINCH); }\n";
-	await tool("clang", [...BASE, "-D_WASI_EMULATED_SIGNAL", "-c", "/s.cpp", "-o", "/main.o"], {"/s.cpp": src}, "/main.o");
 	return {};
 });
 
