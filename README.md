@@ -31,7 +31,7 @@ $ROOT/stage2         Emscripten cross build
 ```bash
 bun scripts/setup.ts            # sources, emsdk, wasi-sysroot, native tblgen
 bun scripts/build-clangd.ts     # clangd
-bun scripts/build-clang.ts      # llvm multicall (clang, wasm-ld, clang-format), include.tar, lib.tar
+bun scripts/build-clang.ts      # llvm multicall (clang, wasm-ld), include.tar, lib.tar
 bun scripts/gen-pch.ts ./dist   # five stdc++ PCHs + compile/link/run gate, no browser
 bun test/clangd.ts ./dist       # clangd LSP gate, Chromium
 ```
@@ -120,9 +120,8 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   data, true, false, true)`. `canOwn` keeps files as views into the tar, outside
   linear memory, one copy shared by every instance. Not `--preload-file`: its
   index lives in each `.js` and it fetches by bare name, which hangs under bun.
-- clang-format is in the multicall via `patches/clang-format-driver.patch`
-  (`GENERATE_DRIVER`, `main` becomes `clang_format_main`). Run it as
-  `thisProgram: '/usr/bin/clang-format'`.
+- No clang-format binary. clangd formats (`textDocument/formatting`, range and
+  on-type) with the same library and reads `.clang-format`.
 - ThinLTO (`LLVM_ENABLE_LTO=Thin`) on both builds. `Release` (-O2) blows the size
   budget; ThinLTO keeps `-Os` and inlines and strips across libraries instead.
 - dlmalloc for both, not mimalloc. On clangd mimalloc was no faster and wrote

@@ -3,12 +3,10 @@ import {cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync} from "n
 import {basename} from "node:path";
 import {
 	BUILD, COMMON_CMAKE, JOBS, LLVM_VER, REPO, ROOT, SRC, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER,
-	emenv, extractTar, patch,
+	emenv, extractTar,
 } from "./common.ts";
 
 const env = await emenv();
-
-await patch("clang-format-driver.patch");
 
 const linker = [
 	"-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
@@ -20,7 +18,7 @@ const linker = [
 
 const extra = [
 	"-DLLVM_TOOL_LLVM_DRIVER_BUILD=ON",
-	"-DLLVM_DISTRIBUTION_COMPONENTS=clang;lld;clang-format",
+	"-DLLVM_DISTRIBUTION_COMPONENTS=clang;lld",
 	"-DCMAKE_CXX_FLAGS=-Dwait4=__syscall_wait4",
 	"-DLLVM_ENABLE_THREADS=OFF",
 ];
