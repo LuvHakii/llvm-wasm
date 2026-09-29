@@ -105,6 +105,27 @@ await check("tty", async () => {
 	return {};
 });
 
+const SIGACTION = `#include <signal.h>
+static volatile sig_atomic_t hit;
+static void h(int s) { hit = s; }
+int main(void) {
+	struct sigaction sa, old;
+	sigemptyset(&sa.sa_mask);
+	sigaddset(&sa.sa_mask, SIGINT);
+	sa.sa_flags = 0;
+	sa.sa_handler = h;
+	if (sigaction(SIGINT, &sa, &old) || old.sa_handler != SIG_DFL) return 1;
+	raise(SIGINT);
+	if (hit != SIGINT || !sigismember(&sa.sa_mask, SIGINT) || sigismember(&sa.sa_mask, SIGQUIT)) return 2;
+	return 0;
+}
+`;
+await check("sigaction", async () => {
+	const cc = await tool("clang", [...BASE, "-D_WASI_EMULATED_SIGNAL", "-c", "/s.c", "-o", "/main.o"], {"/s.c": SIGACTION}, "/main.o");
+	await run((await link(cc.file, ["-lwasi-emulated-signal"])).file, {});
+	return {};
+});
+
 await check("clang-format", async () => {
 	const {file} = await tool("clang-format", ["-i", "/f.cpp"], {"/f.cpp": "int  main( ){return 0;}\n"}, "/f.cpp");
 	const out = new TextDecoder().decode(file);

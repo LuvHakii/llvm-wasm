@@ -1,0 +1,43 @@
+--- a/include/wasm32-wasip1/signal.h
++++ b/include/wasm32-wasip1/signal.h
+@@ -321,6 +321,40 @@
+ void (*signal(int, void (*)(int)))(int);
+ int raise(int);
+ 
++typedef struct { unsigned char __bits[16]; } sigset_t;
++
++struct sigaction {
++	void (*sa_handler)(int);
++	sigset_t sa_mask;
++	int sa_flags;
++};
++
++#define SA_NOCLDSTOP 1
++#define SA_NODEFER 0x40000000
++#define SA_RESETHAND 0x80000000
++#define SA_RESTART 0x10000000
++#define SIG_BLOCK 0
++#define SIG_UNBLOCK 1
++#define SIG_SETMASK 2
++
++static inline int sigemptyset(sigset_t *s) { __builtin_memset(s, 0, sizeof *s); return 0; }
++static inline int sigfillset(sigset_t *s) { __builtin_memset(s, 0xff, sizeof *s); return 0; }
++static inline int sigaddset(sigset_t *s, int n) { s->__bits[(n - 1) / 8] |= 1 << ((n - 1) % 8); return 0; }
++static inline int sigdelset(sigset_t *s, int n) { s->__bits[(n - 1) / 8] &= ~(1 << ((n - 1) % 8)); return 0; }
++static inline int sigismember(const sigset_t *s, int n) { return (s->__bits[(n - 1) / 8] >> ((n - 1) % 8)) & 1; }
++static inline int sigprocmask(int how, const sigset_t *set, sigset_t *old) { if (old) sigemptyset(old); return 0; }
++
++static inline int sigaction(int sig, const struct sigaction *act, struct sigaction *old) {
++	void (*prev)(int) = signal(sig, act ? act->sa_handler : SIG_DFL);
++	if (prev == SIG_ERR) return -1;
++	if (!act) signal(sig, prev);
++	if (old) {
++		__builtin_memset(old, 0, sizeof *old);
++		old->sa_handler = prev;
++	}
++	return 0;
++}
++
+ #ifdef __wasilibc_unmodified_upstream /* WASI has no sigtimedwait */
+ #if _REDIR_TIME64
+ #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \

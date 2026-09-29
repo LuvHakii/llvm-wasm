@@ -49,6 +49,7 @@ cpSync(`${SYSROOT}/include/wasm32-wasip1`, INC, {recursive: true, dereference: t
 renameSync(`${INC}/eh/c++`, `${SLIM}/include/c++`);
 for (const p of [`${INC}/eh`, `${INC}/noeh`, `${SLIM}/include/c++/v1/__cxx03`]) rmSync(p, {recursive: true, force: true});
 await $`patch -p1 -d ${SLIM} < ${REPO}/sysroot/tty.patch`;
+await $`patch -p1 -d ${SLIM} < ${REPO}/sysroot/sigaction.patch`;
 mkdirSync(`${SLIM}/include/c++/v1/bits`, {recursive: true});
 cpSync(`${REPO}/sysroot/bits-stdc++.h`, `${SLIM}/include/c++/v1/bits/stdc++.h`);
 
