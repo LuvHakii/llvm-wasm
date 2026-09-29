@@ -1,11 +1,13 @@
 import {$} from "bun";
 import {cpSync, mkdirSync} from "node:fs";
-import {BUILD, COMMON_CMAKE, JOBS, REPO, emenv, patch} from "./common.ts";
+import {BUILD, COMMON_CMAKE, JOBS, REPO, ROOT, emenv, patch} from "./common.ts";
 
 const env = await emenv();
 
 await patch("wait_stdin.patch");
 await patch("clangd-pch.patch");
+
+const api = new Function(`${await Bun.file(`${ROOT}/emsdk/upstream/emscripten/src/settings.js`).text()}; return INCOMING_MODULE_JS_API`)();
 
 const linker = [
 	"-pthread", "-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
@@ -13,6 +15,7 @@ const linker = [
 	"-s EXPORTED_RUNTIME_METHODS=FS,callMain", "-s MODULARIZE", "-s EXPORT_ES6",
 	"-s PTHREAD_POOL_SIZE='Math.max(navigator.hardwareConcurrency, 8)'",
 	"-s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed",
+	`-s INCOMING_MODULE_JS_API=${[...api, "mainScriptUrlOrBlob"]}`,
 	"-Wl,--thinlto-cache-dir=lto.cache",
 ].join(" ");
 

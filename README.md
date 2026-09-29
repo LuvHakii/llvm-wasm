@@ -137,6 +137,9 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   suspend; JSPI does it in the engine, Asyncify rewrites the wasm: 9.6 vs 14.9 MB
   gzip, preamble 0.7 s vs 1.4 s. Pick `typeof WebAssembly.Suspending === 'function' ?
   'clangd-jspi.js' : 'clangd-asyncify.js'`. JSPI's `callMain` returns a Promise.
+- Hashed file names: pass `mainScriptUrlOrBlob` (clangd `.js` URL, for pthread
+  workers) and `locateFile` (`.wasm`). Emscripten 6.0.2 dropped the former from the
+  default `INCOMING_MODULE_JS_API`; `build-clangd.ts` appends it to emsdk's default.
 - `JOBS` is 8, not nproc, and `LLVM_PARALLEL_LINK_JOBS=1`. Link steps eat
   memory, dev box has ~10 GB free.
 - Compiled programs get `std::thread` that links and then traps at runtime, and
