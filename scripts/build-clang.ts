@@ -1,8 +1,10 @@
 import {$} from "bun";
 import {cpSync, existsSync, mkdirSync, rmSync} from "node:fs";
-import {BUILD, COMMON_CMAKE, JOBS, REPO, ROOT, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER, emenv, extractTar} from "./common.ts";
+import {BUILD, COMMON_CMAKE, JOBS, REPO, ROOT, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER, emenv, extractTar, patch} from "./common.ts";
 
 const env = await emenv();
+
+await patch("clang-format-driver.patch");
 
 const SLIM = `${ROOT}/sysroot-clang`;
 const INC = `${SLIM}/include/wasm32-wasip1`;
@@ -44,7 +46,7 @@ const linker = [
 
 const extra = [
 	"-DLLVM_TOOL_LLVM_DRIVER_BUILD=ON",
-	"-DLLVM_DISTRIBUTION_COMPONENTS=clang;lld",
+	"-DLLVM_DISTRIBUTION_COMPONENTS=clang;lld;clang-format",
 	"-DCMAKE_CXX_FLAGS=-Dwait4=__syscall_wait4",
 	"-DLLVM_ENABLE_THREADS=OFF",
 ];

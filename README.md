@@ -31,7 +31,7 @@ $ROOT/stage2         Emscripten cross build
 ```bash
 bun scripts/setup.ts            # sources, emsdk, wasi-sysroot, native tblgen
 bun scripts/build-clangd.ts     # pass 1 builtin headers, pass 2 clangd
-bun scripts/build-clang.ts      # llvm multicall (clang + wasm-ld), same tree
+bun scripts/build-clang.ts      # llvm multicall (clang, wasm-ld, clang-format), same tree
 bun scripts/gen-pch.ts ./dist   # five stdc++ PCHs + compile/link/run gate, no browser
 bun test/clangd.ts ./dist       # clangd LSP gate, Chromium
 ```
@@ -114,6 +114,9 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   each. Exactly two, `clang -cc1 ...` then `wasm-ld ...`.
 - ninja will not relink when only the *contents* of an `--embed-file` dir
   change. Path unchanged, output looks current. Delete the binary to force it.
+- clang-format is in the multicall via `patches/clang-format-driver.patch`
+  (`GENERATE_DRIVER`, `main` becomes `clang_format_main`). Run it as
+  `thisProgram: '/usr/bin/clang-format'`.
 - `JOBS` is 8, not nproc, and `LLVM_PARALLEL_LINK_JOBS=1`. Link steps eat
   memory, dev box has ~10 GB free.
 - Compiled programs get `std::thread` that links and then traps at runtime, and

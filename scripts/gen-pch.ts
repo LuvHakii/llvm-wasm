@@ -106,4 +106,11 @@ await check("tty", async () => {
 	return {};
 });
 
+await check("clang-format", async () => {
+	const {file} = await tool("clang-format", ["-i", "/f.cpp"], {"/f.cpp": "int  main( ){return 0;}\n"}, "/f.cpp");
+	const out = new TextDecoder().decode(file);
+	if (out !== "int main() { return 0; }\n") throw {stdout: out};
+	return {};
+});
+
 process.exit(failed ? 1 : 0);
