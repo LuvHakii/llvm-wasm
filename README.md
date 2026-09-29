@@ -5,7 +5,7 @@
 | component | version |
 |---|---|
 | LLVM | `llvmorg-23.1.2` |
-| Emscripten | 4.0.22 |
+| Emscripten | 6.0.10 |
 | WASI SDK sysroot | 34 |
 
 ## Layout

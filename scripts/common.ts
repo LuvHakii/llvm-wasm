@@ -3,7 +3,7 @@ import {homedir} from "node:os";
 import {resolve} from "node:path";
 
 export const LLVM_VER = "23.1.2";
-export const EMSDK_VER = "4.0.22";
+export const EMSDK_VER = "6.0.10";
 export const WASI_SDK_MAJOR = "34";
 export const WASI_SDK_VER = `${WASI_SDK_MAJOR}.0`;
 

@@ -13,7 +13,7 @@ await patch("clang-format-driver.patch");
 const linker = [
 	"-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
 	"-s INITIAL_MEMORY=64MB", "-s ALLOW_MEMORY_GROWTH", "-s MAXIMUM_MEMORY=1GB", "-s STACK_SIZE=1MB",
-	"-s EXPORTED_RUNTIME_METHODS=FS,callMain", "-s MODULARIZE", "-s EXPORT_ES6", "-s WASM_BIGINT",
+	"-s EXPORTED_RUNTIME_METHODS=FS,callMain", "-s MODULARIZE", "-s EXPORT_ES6",
 	"-s EXPORTED_FUNCTIONS=_main",
 	"--emit-tsd=llvm.d.ts",
 ].join(" ");
