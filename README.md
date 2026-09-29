@@ -112,6 +112,14 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   `std::filesystem` only with a preopened dir. `throw`/`catch`, `std::mutex`,
   `std::atomic` and deferred `std::async` all work.
 
+- Terminal support. wasi-libc ships no `termios.h`. Both builds apply
+  `patches/wasi-sysroot-tty.patch` (adds `termios.h`, `TCGETS`/`TCSETS`/`TIOCGWINSZ`
+  and `struct winsize` in `sys/ioctl.h`) to the slim sysroot, and `build-clang.sh`
+  adds `libtty.a` (`__wrap_ioctl`, from `scripts/tty.c`). Link with `-ltty
+  --wrap=ioctl`; the host must provide wasm imports `tty.tcgets`, `tty.tcsets` and
+  `tty.winsize`. The wire layout is musl `struct termios`: `c_cc` at offset 17, 60
+  bytes total.
+
 ## Credits
 
 `patches/wait_stdin.patch` and CMake config from

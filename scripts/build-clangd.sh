@@ -38,6 +38,7 @@ rm -rf $SLIM && mkdir -p $SLIM/include
 find $SYSROOT/include -maxdepth 1 -type f -name '*.h' -exec cp {} $SLIM/include/ \;
 cp -r $SYSROOT/include/wasm32-wasip1 $SLIM/include/
 rm -rf $SLIM/include/wasm32-wasip1/noeh
+patch -p1 -d $SLIM < $REPO/patches/wasi-sysroot-tty.patch
 mkdir -p $SLIM/include/wasm32-wasip1/eh/c++/v1/bits
 cp $REPO/scripts/bits-stdc++.h $SLIM/include/wasm32-wasip1/eh/c++/v1/bits/stdc++.h
 mkdir -p $SLIM/include/c++/v1/bits
