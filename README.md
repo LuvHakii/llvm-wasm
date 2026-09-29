@@ -64,7 +64,8 @@ a user fetches one.
 
 99 of 104 candidate headers compile, identically at c++11 through c++23, since
 libc++ 22 guards the newer ones internally. One shim, every standard. Missing:
-`csignal`, `generator`, `spanstream`, `stacktrace`, `stdfloat`. Trimming the
+`generator`, `spanstream`, `stacktrace`, `stdfloat`, and `csignal`, which works
+but needs `-D_WASI_EMULATED_SIGNAL` (wasi-libc `#error`s without it). Trimming the
 shim is pointless: `<vector>` alone costs 70x the base overhead and `<iostream>`
 90x, while all 72 headers past a competitive-programming set add only 5 MiB.
 
