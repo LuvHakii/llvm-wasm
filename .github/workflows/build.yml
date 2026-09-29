@@ -9,7 +9,7 @@ on:
         default: false
 
 concurrency:
-  group: build
+  group: build-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
