@@ -19,7 +19,7 @@ rmSync(SLIM, {recursive: true, force: true});
 mkdirSync(`${SLIM}/include`, {recursive: true});
 for (const f of new Bun.Glob("*.h").scanSync(`${SYSROOT}/include`)) cpSync(`${SYSROOT}/include/${f}`, `${SLIM}/include/${f}`);
 cpSync(`${SYSROOT}/include/wasm32-wasip1`, INC, {recursive: true, dereference: true});
-rmSync(`${INC}/noeh`, {recursive: true, force: true});
+for (const p of [`${INC}/noeh`, `${INC}/eh/c++/v1/__cxx03`]) rmSync(p, {recursive: true, force: true});
 await $`patch -p1 -d ${SLIM} < ${REPO}/sysroot/tty.patch`;
 for (const dir of [`${INC}/eh/c++/v1/bits`, `${SLIM}/include/c++/v1/bits`]) {
 	mkdirSync(dir, {recursive: true});
@@ -28,7 +28,7 @@ for (const dir of [`${INC}/eh/c++/v1/bits`, `${SLIM}/include/c++/v1/bits`]) {
 
 const linker = [
 	"-pthread", "-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
-	"-s INITIAL_MEMORY=256MB", "-s ALLOW_MEMORY_GROWTH", "-s MAXIMUM_MEMORY=1GB", "-s STACK_SIZE=256kB",
+	"-s INITIAL_MEMORY=192MB", "-s ALLOW_MEMORY_GROWTH", "-s MAXIMUM_MEMORY=1GB", "-s STACK_SIZE=256kB",
 	"-s EXPORTED_RUNTIME_METHODS=FS,callMain", "-s MODULARIZE", "-s EXPORT_ES6", "-s WASM_BIGINT",
 	"-s ASYNCIFY", "-s PTHREAD_POOL_SIZE='Math.max(navigator.hardwareConcurrency, 8)'",
 	"-s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed",

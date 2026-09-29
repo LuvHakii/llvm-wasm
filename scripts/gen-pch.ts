@@ -61,7 +61,7 @@ async function check(name: string, f: () => Promise<object>) {
 }
 
 for (const std of STDS) await check(std, async () => {
-	const gen = await tool("clang", [...BASE, "-x", "c++-header", `-std=${std}`, SHIM, "-o", "/stdc++.pch"], {}, "/stdc++.pch");
+	const gen = await tool("clang", [...BASE, "-x", "c++-header", `-std=${std}`, "-fpch-instantiate-templates", SHIM, "-o", "/stdc++.pch"], {}, "/stdc++.pch");
 	// -fno-validate-pch is mandatory since --embed-file restamps the sysroot mtime per
 	// instance, so clang(d) would reject it.
 	const use = await tool("clang",

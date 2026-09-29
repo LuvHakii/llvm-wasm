@@ -12,7 +12,7 @@ mkdirSync(`${SLIM}/include`, {recursive: true});
 mkdirSync(LIB, {recursive: true});
 for (const f of new Bun.Glob("*.h").scanSync(`${SYSROOT}/include`)) cpSync(`${SYSROOT}/include/${f}`, `${SLIM}/include/${f}`);
 cpSync(`${SYSROOT}/include/wasm32-wasip1`, INC, {recursive: true, dereference: true});
-rmSync(`${INC}/noeh`, {recursive: true, force: true});
+for (const p of [`${INC}/noeh`, `${INC}/eh/c++/v1/__cxx03`]) rmSync(p, {recursive: true, force: true});
 await $`patch -p1 -d ${SLIM} < ${REPO}/sysroot/tty.patch`;
 for (const dir of [`${INC}/eh/c++/v1/bits`, `${SLIM}/include/c++/v1/bits`]) {
 	mkdirSync(dir, {recursive: true});
@@ -22,6 +22,7 @@ for (const dir of [`${INC}/eh/c++/v1/bits`, `${SLIM}/include/c++/v1/bits`]) {
 const libs = `${SYSROOT}/lib/wasm32-wasip1`;
 for (const f of new Bun.Glob("*.{a,o}").scanSync(libs)) cpSync(`${libs}/${f}`, `${LIB}/${f}`);
 cpSync(`${libs}/eh`, `${LIB}/eh`, {recursive: true, dereference: true});
+rmSync(`${LIB}/eh/llvm-lto`, {recursive: true, force: true});
 
 const emclang = `${ROOT}/emsdk/upstream/bin`;
 await $`${emclang}/clang --target=wasm32-wasip1 --sysroot=${SLIM} -O2 -c ${REPO}/sysroot/tty.c -o ${ROOT}/tty.o`;
@@ -33,7 +34,7 @@ cpSync(RT, `${LIB}/libclang_rt.builtins.a`);
 
 const linker = [
 	"-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
-	"-s INITIAL_MEMORY=256MB", "-s ALLOW_MEMORY_GROWTH", "-s MAXIMUM_MEMORY=1GB", "-s STACK_SIZE=1MB",
+	"-s INITIAL_MEMORY=64MB", "-s ALLOW_MEMORY_GROWTH", "-s MAXIMUM_MEMORY=1GB", "-s STACK_SIZE=1MB",
 	"-s EXPORTED_RUNTIME_METHODS=FS,callMain", "-s MODULARIZE", "-s EXPORT_ES6", "-s WASM_BIGINT",
 	"-s EXPORTED_FUNCTIONS=_main",
 	"--emit-tsd=llvm.d.ts",
