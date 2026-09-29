@@ -128,4 +128,10 @@ await check("sigaction", async () => {
 	return {};
 });
 
+await check("sigaction-cpp", async () => {
+	const src = "#include <sys/types.h>\n#include <csignal>\nint main() { struct sigaction sa; sigemptyset(&sa.sa_mask); sigaddset(&sa.sa_mask, SIGWINCH); return sigaction(SIGINT, &sa, 0) + !sigismember(&sa.sa_mask, SIGWINCH); }\n";
+	await tool("clang", [...BASE, "-D_WASI_EMULATED_SIGNAL", "-c", "/s.cpp", "-o", "/main.o"], {"/s.cpp": src}, "/main.o");
+	return {};
+});
+
 process.exit(failed ? 1 : 0);
