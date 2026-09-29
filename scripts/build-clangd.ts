@@ -5,6 +5,7 @@ import {BUILD, COMMON_CMAKE, JOBS, REPO, emenv, patch} from "./common.ts";
 const env = await emenv();
 
 await patch("wait_stdin.patch");
+await patch("clangd-pch.patch");
 
 const linker = [
 	"-pthread", "-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
