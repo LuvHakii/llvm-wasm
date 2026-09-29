@@ -11,7 +11,7 @@
 ## Layout
 
 ```
-scripts/             build pipeline: setup, clangd, clang multicall, PCHs + gate
+scripts/             build pipeline (Bun TS): setup, clangd, clang multicall, PCHs + gate
 sysroot/             added to the embedded sysroot: bits/stdc++.h, tty.patch, tty.c
 patches/             LLVM source patches
 test/                clangd LSP gate in Chromium
@@ -29,9 +29,9 @@ $ROOT/stage2         Emscripten cross build
 ## Build
 
 ```bash
-scripts/setup.sh                # sources, emsdk, wasi-sysroot, native tblgen
-scripts/build-clangd.sh         # pass 1 builtin headers, pass 2 clangd
-scripts/build-clang.sh          # llvm multicall (clang + wasm-ld), same tree
+bun scripts/setup.ts            # sources, emsdk, wasi-sysroot, native tblgen
+bun scripts/build-clangd.ts     # pass 1 builtin headers, pass 2 clangd
+bun scripts/build-clang.ts      # llvm multicall (clang + wasm-ld), same tree
 bun scripts/gen-pch.ts ./dist   # five stdc++ PCHs + compile/link/run gate, no browser
 bun test/clangd.ts ./dist       # clangd LSP gate, Chromium
 ```
@@ -122,7 +122,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 
 - Terminal support. wasi-libc ships no `termios.h`. Both builds apply
   `sysroot/tty.patch` (adds `termios.h`, `TCGETS`/`TCSETS`/`TIOCGWINSZ`
-  and `struct winsize` in `sys/ioctl.h`) to the slim sysroot, and `build-clang.sh`
+  and `struct winsize` in `sys/ioctl.h`) to the slim sysroot, and `build-clang.ts`
   adds `libtty.a` (`__wrap_ioctl`, from `sysroot/tty.c`). Link with `-ltty
   --wrap=ioctl`; the host must provide wasm imports `tty.tcgets`, `tty.tcsets` and
   `tty.winsize`. The wire layout is musl `struct termios`: `c_cc` at offset 17, 60

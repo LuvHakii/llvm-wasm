@@ -34,19 +34,8 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
-      # Key is llvm-emsdk-wasi-<setup.sh hash>. A key: expression cannot source a
-      # shell file, hence the outputs hop. Keyed on the version values rather than
-      # hashFiles(common.sh) so that editing CMake flags or paths in there does not
-      # throw away a 1 GiB cache they cannot affect.
       - name: versions
-        id: v
-        run: |
-          source scripts/common.sh
-          {
-            echo "llvm=$LLVM_VER"
-            echo "emsdk=$EMSDK_VER"
-            echo "wasi=$WASI_SDK_VER"
-          } >> "$GITHUB_OUTPUT"
+        run: bun scripts/common.ts >> "$GITHUB_ENV"
 
       - name: cache sources + emsdk + stage1
         uses: actions/cache@v4
@@ -55,28 +44,25 @@ jobs:
             /home/runner/llvm-build/llvm-project
             /home/runner/llvm-build/emsdk
             /home/runner/llvm-build/stage1
-          key: ${{ steps.v.outputs.llvm }}-${{ steps.v.outputs.emsdk }}-${{ steps.v.outputs.wasi }}-${{ hashFiles('scripts/setup.sh') }}
+          key: ${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ env.WASI_SDK_VER }}-${{ hashFiles('scripts/setup.ts') }}
 
-      # tsc for emcc --emit-tsd, Playwright for the clangd gate
       - name: install deps
         run: |
           bun install --frozen-lockfile
           bunx --bun playwright install --with-deps chromium
 
-      # Seconds, and before the five-hour build rather than after it.
       - name: typecheck
         run: bunx --bun tsc --noEmit
 
       - name: setup
-        run: bash scripts/setup.sh
+        run: bun scripts/setup.ts
 
       - name: build clangd
-        run: bash scripts/build-clangd.sh
+        run: bun scripts/build-clangd.ts
 
       - name: build llvm multicall
-        run: bash scripts/build-clang.sh
+        run: bun scripts/build-clang.ts
 
-      # clang has no pthread pool, so this one needs no browser
       - name: "PCHs, gate: compile + link + run, tty"
         run: |
           bun scripts/gen-pch.ts ./dist
@@ -87,10 +73,7 @@ jobs:
 
       - name: stage release
         run: |
-          source scripts/common.sh
           mkdir -p release
-          # raw, uncompressed - the consuming build (omni) fetches these and compresses once
-          # itself (brotli), instead of round-tripping through gzip-here then decompress-there
           for t in clangd llvm; do
             cp dist/$t.js dist/$t.d.ts dist/$t.wasm release/
           done
@@ -112,8 +95,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          source scripts/common.sh
-          # One clock read, so tag and body can never straddle a minute.
           NOW=$(date -u +%s)
           TAG=$(date -u -d "@$NOW" +%Y%m%d-%H%M)
           NOTES=$(printf 'WASM: v%s\nLLVM: v%s\nWASI: v%s\n%s\n' \
