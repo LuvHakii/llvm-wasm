@@ -30,7 +30,7 @@ cmake --build $BUILD --target clang-resource-headers -j $JOBS
 echo "[$(date +%T)] seeding sysroot with compiler headers + bits/stdc++.h"
 cp -r $BUILD/lib/clang/$LLVM_VER_MAJOR/include/* $SYSROOT/include/
 mkdir -p $SYSROOT/include/c++/v1/bits
-cp $REPO/scripts/bits-stdc++.h $SYSROOT/include/c++/v1/bits/stdc++.h
+cp $REPO/sysroot/bits-stdc++.h $SYSROOT/include/c++/v1/bits/stdc++.h
 
 echo "[$(date +%T)] building slim sysroot (drop unused triples and the noeh variant)"
 SLIM=$ROOT/sysroot-slim
@@ -38,11 +38,11 @@ rm -rf $SLIM && mkdir -p $SLIM/include
 find $SYSROOT/include -maxdepth 1 -type f -name '*.h' -exec cp {} $SLIM/include/ \;
 cp -r $SYSROOT/include/wasm32-wasip1 $SLIM/include/
 rm -rf $SLIM/include/wasm32-wasip1/noeh
-patch -p1 -d $SLIM < $REPO/patches/wasi-sysroot-tty.patch
+patch -p1 -d $SLIM < $REPO/sysroot/tty.patch
 mkdir -p $SLIM/include/wasm32-wasip1/eh/c++/v1/bits
-cp $REPO/scripts/bits-stdc++.h $SLIM/include/wasm32-wasip1/eh/c++/v1/bits/stdc++.h
+cp $REPO/sysroot/bits-stdc++.h $SLIM/include/wasm32-wasip1/eh/c++/v1/bits/stdc++.h
 mkdir -p $SLIM/include/c++/v1/bits
-cp $REPO/scripts/bits-stdc++.h $SLIM/include/c++/v1/bits/stdc++.h
+cp $REPO/sysroot/bits-stdc++.h $SLIM/include/c++/v1/bits/stdc++.h
 echo "  slim sysroot: $(du -sh $SLIM/include | cut -f1) (was $(du -sh $SYSROOT/include | cut -f1))"
 
 echo "[$(date +%T)] pass 2: configure (real link flags)"

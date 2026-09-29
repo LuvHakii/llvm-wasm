@@ -11,6 +11,13 @@
 ## Layout
 
 ```
+scripts/             build pipeline: setup, clangd, clang multicall, PCHs + gate
+sysroot/             added to the embedded sysroot: bits/stdc++.h, tty.patch, tty.c
+patches/             LLVM source patches
+test/                clangd LSP gate in Chromium
+```
+
+```
 $ROOT                default ~/llvm-build, override for a bigger disk. never /tmp, tmpfs eats RAM
 $ROOT/llvm-project   shallow llvmorg-22.1.8 clone
 $ROOT/emsdk          pinned Emscripten SDK
@@ -25,7 +32,8 @@ $ROOT/stage2         Emscripten cross build
 scripts/setup.sh                # sources, emsdk, wasi-sysroot, native tblgen
 scripts/build-clangd.sh         # pass 1 builtin headers, pass 2 clangd
 scripts/build-clang.sh          # llvm multicall (clang + wasm-ld), same tree
-bun scripts/gen-pch.ts ./dist   # five stdc++ PCHs, no browser
+bun scripts/gen-pch.ts ./dist   # five stdc++ PCHs + compile/link/run gate, no browser
+bun test/clangd.ts ./dist       # clangd LSP gate, Chromium
 ```
 
 ## Measured
@@ -97,10 +105,10 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 - `-Xclang -fno-validate-pch` in every consumer. `--embed-file`
   restamps the sysroot mtime per instance, so clang rejects any PCH built by
   another one: *"mtime changed"*. Skip the flag and every PCH is dead weight.
-  `gen-pch.ts` probe-compiles each one before writing it.
+  `gen-pch.ts` compiles, links and runs a probe with each one before writing it.
 - clang and lld never share a page or worker. Both at once crashed Chromium at
-  any `INITIAL_MEMORY`. One multicall binary now, tests still load compile and
-  link separately.
+  any `INITIAL_MEMORY`. One multicall binary now, `gen-pch.ts` still gives
+  each its own instance.
 - Emscripten has no `fork`/`exec`, clang cannot spawn `wasm-ld`. No LLVM patch
   needed: run clang `-###`, it prints the commands it would run, then `callMain`
   each. Exactly two, `clang -cc1 ...` then `wasm-ld ...`.
@@ -113,12 +121,12 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   `std::atomic` and deferred `std::async` all work.
 
 - Terminal support. wasi-libc ships no `termios.h`. Both builds apply
-  `patches/wasi-sysroot-tty.patch` (adds `termios.h`, `TCGETS`/`TCSETS`/`TIOCGWINSZ`
+  `sysroot/tty.patch` (adds `termios.h`, `TCGETS`/`TCSETS`/`TIOCGWINSZ`
   and `struct winsize` in `sys/ioctl.h`) to the slim sysroot, and `build-clang.sh`
-  adds `libtty.a` (`__wrap_ioctl`, from `scripts/tty.c`). Link with `-ltty
+  adds `libtty.a` (`__wrap_ioctl`, from `sysroot/tty.c`). Link with `-ltty
   --wrap=ioctl`; the host must provide wasm imports `tty.tcgets`, `tty.tcsets` and
   `tty.winsize`. The wire layout is musl `struct termios`: `c_cc` at offset 17, 60
-  bytes total.
+  bytes total. `gen-pch.ts` checks it.
 
 ## Credits
 

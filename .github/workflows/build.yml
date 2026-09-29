@@ -32,12 +32,6 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      # node is here for the tsc shebang that emcc --emit-tsd shells out to;
-      # emsdk keeps its own node but never puts it on PATH.
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
       - uses: oven-sh/setup-bun@v2
 
       # Key is llvm-emsdk-wasi-<setup.sh hash>. A key: expression cannot source a
@@ -63,17 +57,15 @@ jobs:
             /home/runner/llvm-build/stage1
           key: ${{ steps.v.outputs.llvm }}-${{ steps.v.outputs.emsdk }}-${{ steps.v.outputs.wasi }}-${{ hashFiles('scripts/setup.sh') }}
 
-      # tsc for emcc --emit-tsd, Playwright for the gates, wasi shim for link.html
+      # tsc for emcc --emit-tsd, Playwright for the clangd gate
       - name: install deps
         run: |
           bun install --frozen-lockfile
-          bunx playwright install --with-deps chromium
-          mkdir -p dist/wasi
-          cp node_modules/@bjorn3/browser_wasi_shim/dist/*.js dist/wasi/
+          bunx --bun playwright install --with-deps chromium
 
       # Seconds, and before the five-hour build rather than after it.
       - name: typecheck
-        run: bunx tsc --noEmit
+        run: bunx --bun tsc --noEmit
 
       - name: setup
         run: bash scripts/setup.sh
@@ -84,17 +76,14 @@ jobs:
       - name: build llvm multicall
         run: bash scripts/build-clang.sh
 
-      - name: "gate: compile + link + run"
-        run: bun scripts/browser-test/run.ts ./dist /compile.html,/link.html
-
-      - name: "gate: clangd LSP"
-        run: bun scripts/browser-test/run.ts ./dist /
-
       # clang has no pthread pool, so this one needs no browser
-      - name: generate PCHs
+      - name: "PCHs, gate: compile + link + run, tty"
         run: |
           bun scripts/gen-pch.ts ./dist
           ls -la dist/pch/
+
+      - name: "gate: clangd LSP"
+        run: bun test/clangd.ts ./dist
 
       - name: stage release
         run: |

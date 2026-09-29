@@ -4,7 +4,7 @@
 <body>
 <pre id="log">starting</pre>
 <script type="module">
-const log = m => { document.getElementById('log').textContent += '\n' + m; console.log(m); };
+const log = o => { document.getElementById('log').textContent += '\n' + JSON.stringify(o); console.log(o); };
 window.__done = null;
 window.__result = null;
 
@@ -60,7 +60,7 @@ const waitFor = async (pred, label, ms = 60000) => {
 };
 
 try {
-	log('crossOriginIsolated=' + self.crossOriginIsolated);
+	log({crossOriginIsolated: self.crossOriginIsolated});
 	const t0 = performance.now();
 	const {default: Clangd} = await import('./clangd.js');
 	let pending = [];
@@ -71,36 +71,46 @@ try {
 		stdinReady: async () => { if (!stdinChunks.length) return new Promise(r => (resolveStdin = r)); },
 		stdin: readStdin,
 		stdout: c => { stdoutBytes++; pending.push(c); queueMicrotask(() => { if (pending.length) { deframe(Uint8Array.from(pending)); pending = []; } }); },
-		stderr: c => { errLine += String.fromCharCode(c); if (c === 10) { log('[stderr] ' + errLine.trim()); errLine = ''; } },
-		onExit: () => log('clangd exited'),
-		onAbort: w => log('clangd aborted: ' + w)
+		stderr: c => { errLine += String.fromCharCode(c); if (c === 10) { log({stderr: errLine.trim()}); errLine = ''; } },
+		onExit: code => log({exit: code}),
+		onAbort: reason => log({abort: reason})
 	});
 	const tInst = performance.now() - t0;
-	log(`instantiate ${tInst.toFixed(0)}ms`);
+	log({tInst});
 
 	clangd.FS.mkdir(WORKSPACE);
 	clangd.FS.writeFile(FILE, SOURCE);
+	let pch = null;
+	try {
+		const r = await fetch('./pch/stdc++-c++20.pch');
+		if (!r.ok) throw new Error('pch ' + r.status);
+		pch = new Uint8Array(await r.arrayBuffer());
+		clangd.FS.writeFile('/stdc++.pch', pch);
+		log({pch: pch.length});
+	} catch {
+		log({pch: null});
+	}
 	clangd.FS.writeFile(`${WORKSPACE}/.clangd`, JSON.stringify({CompileFlags: {Add: [
 		'--target=wasm32-wasip1', '-std=c++20', '-fwasm-exceptions',
+		...(pch ? ['-include-pch', '/stdc++.pch', '-Xclang', '-fno-validate-pch'] : []),
 		'-isystem/usr/include/wasm32-wasip1/eh/c++/v1', '-isystem/usr/include/c++/v1',
 		'-isystem/usr/include/wasm32-wasip1', '-isystem/usr/include'
 	]}}));
 	clangd.callMain(['--background-index=false']);
 
-	setTimeout(() => log(`stdout bytes after 5s: ${stdoutBytes}, inbox: ${inbox.length}`), 5000);
+	setTimeout(() => log({after5s: {stdoutBytes, inbox: inbox.length}}), 5000);
 	const t1 = performance.now();
 	send({jsonrpc:'2.0', id:1, method:'initialize', params:{processId:null, rootUri:`file://${WORKSPACE}`, capabilities:{}}});
 	await waitFor(m => m.id === 1, 'initialize');
 	const tInit = performance.now() - t1;
-	log(`initialize: ${tInit.toFixed(0)}ms`);
+	log({tInit});
 	send({jsonrpc:'2.0', method:'initialized', params:{}});
 	send({jsonrpc:'2.0', method:'textDocument/didOpen', params:{textDocument:{uri:`file://${FILE}`, languageId:'cpp', version:1, text:SOURCE}}});
 
 	const t2 = performance.now();
 	const diag = await waitFor(m => m.method === 'textDocument/publishDiagnostics', 'diagnostics');
 	const tDiag = performance.now() - t2;
-	log(`diagnostics: ${diag.params.diagnostics.length} item(s), ${tDiag.toFixed(0)}ms`);
-	for (const d of diag.params.diagnostics.slice(0,3)) log('  diag: ' + d.message.slice(0,120));
+	log({tDiag, diagnostics: diag.params.diagnostics.map(d => d.message)});
 
 	let items = [], labels = [], ok = false, tComp = 0, attempts = 0;
 	const deadline = performance.now() + 180000;
@@ -117,12 +127,8 @@ try {
 		if (ok) break;
 		await new Promise(r => setTimeout(r, 1500));
 	}
-	log(`completion: ${items.length} items, ${tComp.toFixed(0)}ms, ${attempts} attempt(s)`);
-	log('sample: ' + labels.slice(0, 10).join(', '));
-	log(ok ? 'PASS' : 'FAIL: no vector members');
 	window.__result = {ok, tInst, tInit, tDiag, tComp, attempts, items: items.length, sample: labels.slice(0, 12)};
 } catch (e) {
-	log('ERROR: ' + (e?.message ?? String(e)));
 	window.__result = {ok: false, error: e?.message ?? String(e)};
 }
 window.__done = true;

@@ -11,14 +11,14 @@ rm -rf $SLIM && mkdir -p $SLIM/include $SLIM/lib
 find $SYSROOT/include -maxdepth 1 -type f -name '*.h' -exec cp {} $SLIM/include/ \;
 cp -r $SYSROOT/include/wasm32-wasip1 $SLIM/include/
 rm -rf $SLIM/include/wasm32-wasip1/noeh
-patch -p1 -d $SLIM < $REPO/patches/wasi-sysroot-tty.patch
+patch -p1 -d $SLIM < $REPO/sysroot/tty.patch
 mkdir -p $SLIM/include/wasm32-wasip1/eh/c++/v1/bits $SLIM/include/c++/v1/bits
-cp $REPO/scripts/bits-stdc++.h $SLIM/include/wasm32-wasip1/eh/c++/v1/bits/stdc++.h
-cp $REPO/scripts/bits-stdc++.h $SLIM/include/c++/v1/bits/stdc++.h
+cp $REPO/sysroot/bits-stdc++.h $SLIM/include/wasm32-wasip1/eh/c++/v1/bits/stdc++.h
+cp $REPO/sysroot/bits-stdc++.h $SLIM/include/c++/v1/bits/stdc++.h
 mkdir -p $SLIM/lib/wasm32-wasip1
 cp $SYSROOT/lib/wasm32-wasip1/*.a $SYSROOT/lib/wasm32-wasip1/*.o $SLIM/lib/wasm32-wasip1/ 2>/dev/null || true
 cp -r $SYSROOT/lib/wasm32-wasip1/eh $SLIM/lib/wasm32-wasip1/
-$ROOT/emsdk/upstream/bin/clang --target=wasm32-wasip1 --sysroot=$SLIM -O2 -c $REPO/scripts/tty.c -o $ROOT/tty.o
+$ROOT/emsdk/upstream/bin/clang --target=wasm32-wasip1 --sysroot=$SLIM -O2 -c $REPO/sysroot/tty.c -o $ROOT/tty.o
 $ROOT/emsdk/upstream/bin/llvm-ar rcs $SLIM/lib/wasm32-wasip1/libtty.a $ROOT/tty.o
 RT=$ROOT/libclang_rt-$WASI_SDK_VER+m/wasm32-unknown-wasi/libclang_rt.builtins.a
 if [ ! -f "$RT" ]; then
