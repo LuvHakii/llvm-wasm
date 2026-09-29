@@ -105,18 +105,20 @@ await check("tty", async () => {
 	return {};
 });
 
-const SIGACTION = `#include <signal.h>
+const SIGACTION = `#include <errno.h>
+#include <signal.h>
 static volatile sig_atomic_t hit;
 static void h(int s) { hit = s; }
 int main(void) {
 	struct sigaction sa, old;
 	sigemptyset(&sa.sa_mask);
 	sigaddset(&sa.sa_mask, SIGINT);
-	sa.sa_flags = 0;
+	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = h;
 	if (sigaction(SIGINT, &sa, &old) || old.sa_handler != SIG_DFL) return 1;
 	raise(SIGINT);
 	if (hit != SIGINT || !sigismember(&sa.sa_mask, SIGINT) || sigismember(&sa.sa_mask, SIGQUIT)) return 2;
+	if (sigaction(-1, &sa, 0) != -1 || errno != EINVAL) return 3;
 	return 0;
 }
 `;
