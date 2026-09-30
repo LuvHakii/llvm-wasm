@@ -1,0 +1,30 @@
+diff --git a/clang/lib/AST/ASTContext.cpp b/clang/lib/AST/ASTContext.cpp
+index 22288115..35106dc3 100644
+--- a/clang/lib/AST/ASTContext.cpp
++++ b/clang/lib/AST/ASTContext.cpp
+@@ -902,10 +902,7 @@ CXXABI *ASTContext::createCXXABI(const TargetInfo &T) {
+ }
+ 
+ interp::Context &ASTContext::getInterpContext() const {
+-  if (!InterpContext) {
+-    InterpContext.reset(new interp::Context(const_cast<ASTContext &>(*this)));
+-  }
+-  return *InterpContext;
++  llvm::report_fatal_error("the experimental constant interpreter is not built in");
+ }
+ 
+ ParentMapContext &ASTContext::getParentMapContext() {
+diff --git a/clang/lib/CodeGen/CGBuiltin.cpp b/clang/lib/CodeGen/CGBuiltin.cpp
+index 37846bbb..72afe717 100644
+--- a/clang/lib/CodeGen/CGBuiltin.cpp
++++ b/clang/lib/CodeGen/CGBuiltin.cpp
+@@ -75,6 +75,9 @@ static Value *EmitTargetArchBuiltinExpr(CodeGenFunction *CGF,
+                                         unsigned BuiltinID, const CallExpr *E,
+                                         ReturnValueSlot ReturnValue,
+                                         llvm::Triple::ArchType Arch) {
++  if (Arch == llvm::Triple::wasm32 || Arch == llvm::Triple::wasm64)
++    return CGF->EmitWebAssemblyBuiltinExpr(BuiltinID, E);
++  return nullptr;
+   // When compiling in HipStdPar mode we have to be conservative in rejecting
+   // target specific features in the FE, and defer the possible error to the
+   // AcceleratorCodeSelection pass, wherein iff an unsupported target builtin is

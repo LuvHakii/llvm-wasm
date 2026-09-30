@@ -97,6 +97,10 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   one process, since neither has a pthread pool. clangd's 16-worker pool never
   comes up: bun drops the `Worker` `name` option, and patching that only moves
   the hang. So Chromium via Playwright, `dist/` under COOP/COEP.
+- `patches/clang-trim.patch`, both binaries: the experimental constant interpreter
+  (`-fexperimental-new-constant-interpreter`, off by default, ~1.4 MB each) becomes a
+  fatal error, and target builtin codegen handles WebAssembly only (0.49 MB, every
+  arch's `Emit*BuiltinExpr` inlined into one function).
 - `patches/lld-wasm-only.patch`: lld links its ELF, COFF, MachO and MinGW drivers
   and picks one by `argv[0]` at runtime, so LTO keeps all of them. Only `wasm-ld`
   runs here.

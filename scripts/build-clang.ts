@@ -9,6 +9,7 @@ import {
 const env = await emenv();
 
 await patch("lld-wasm-only.patch");
+await patch("clang-trim.patch");
 
 const linker = [
 	"-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
