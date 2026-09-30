@@ -13,7 +13,9 @@ const linker = [
 	"-pthread", "-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
 	"-s INITIAL_MEMORY=192MB", "-s ALLOW_MEMORY_GROWTH", "-s MAXIMUM_MEMORY=1GB", "-s STACK_SIZE=256kB",
 	"-s EXPORTED_RUNTIME_METHODS=FS,callMain", "-s MODULARIZE", "-s EXPORT_ES6",
-	"-s PTHREAD_POOL_SIZE='Math.max(navigator.hardwareConcurrency, 8)'",
+	// clangd peaks at 5 live threads for one open file (ASTWorker, PreambleWorker, preamble indexing, stdlib index,
+	// a request task); -j limits concurrent work, not thread count. A spawn past the pool loads a Worker on demand.
+	"-s PTHREAD_POOL_SIZE=6",
 	"-s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed",
 	`-s INCOMING_MODULE_JS_API=${[...api, "mainScriptUrlOrBlob"]}`,
 	LTO_FLAGS,
