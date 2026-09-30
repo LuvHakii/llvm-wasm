@@ -77,8 +77,8 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 
 - Embed only `wasm32-wasip1/eh`. wasi-sdk ships five triples, each with `eh` and
   `noeh` libc++. Dropping the rest cuts header mass 7x and `clangd.wasm` 3x,
-  gzip 2.2x, landing at 14.7 MiB, under the cap. `CLANGD_TIDY_CHECKS=OFF` shaves
-  another 3%.
+  gzip 2.2x, landing at 14.7 MiB, under the cap. clang-tidy checks are linked
+  (`CLANGD_TIDY_CHECKS` default ON, about 3%); none run until `.clangd` adds them.
 - Sysroot layout matches clang's WASI defaults, so no `--sysroot` or `-isystem`:
   libc++ (eh variant) at `include/c++/v1`, clang's core + wasm builtin headers
   (40 of ~230, the rest is other arches' intrinsics) in `include/`, libs
@@ -127,6 +127,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   data, true, false, true)`. `canOwn` keeps files as views into the tar, outside
   linear memory, one copy shared by every instance. Not `--preload-file`: its
   index lives in each `.js` and it fetches by bare name, which hangs under bun.
+  Mount the PCH the same way: `FS.writeFile` copies it, +30 MB per instance at c++20.
 - No clang-format binary. clangd formats (`textDocument/formatting`, range and
   on-type) with the same library and reads `.clang-format`.
 - ThinLTO (`LLVM_ENABLE_LTO=Thin`) on both builds. `Release` (-O2) blows the size
@@ -142,6 +143,14 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 - Hashed file names: pass `mainScriptUrlOrBlob` (clangd `.js` URL, for pthread
   workers) and `locateFile` (`.wasm`). Emscripten 6.0.2 dropped the former from the
   default `INCOMING_MODULE_JS_API`; `build-clangd.ts` appends it to emsdk's default.
+- clangd `PTHREAD_POOL_SIZE=6`. One open file peaks at 5 live threads (ASTWorker,
+  PreambleWorker, preamble indexing, stdlib index, a request task). `-j` caps concurrent
+  work, not threads. Past the pool, Emscripten loads a Worker on demand, the path that hangs.
+- ccache keys the compiler on the emscripten-releases commit for `EMSDK_VER`, not
+  mtime: every fresh emsdk install is new, so the default never hits in CI.
+  `CCACHE_COMPILERTYPE=clang`, since it reads `em++` as "other".
+- ThinLTO cache `prune_after=0s`. Pruning goes by atime and a hit never bumps it, so
+  time expiry drops live entries. The 3 GB size cap is the only limit.
 - `JOBS` is 8, not nproc, and `LLVM_PARALLEL_LINK_JOBS=1`. Link steps eat
   memory, dev box has ~10 GB free.
 - Compiled programs get `std::thread` that links and then traps at runtime, and

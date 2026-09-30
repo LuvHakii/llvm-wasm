@@ -91,7 +91,7 @@ try {
 		const r = await fetch('./pch/stdc++-c++20.pch');
 		if (!r.ok) throw new Error('pch ' + r.status);
 		pch = new Uint8Array(await r.arrayBuffer());
-		clangd.FS.writeFile('/stdc++.pch', pch);
+		clangd.FS.createDataFile('/stdc++.pch', null, pch, true, false, true);
 		log({pch: pch.length});
 	} catch {
 		log({pch: null});

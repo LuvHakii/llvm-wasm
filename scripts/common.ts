@@ -15,9 +15,6 @@ export const SRC = `${ROOT}/llvm-project`;
 export const SYSROOT = `${ROOT}/wasi-sysroot`;
 export const NATIVE = `${ROOT}/stage1`;
 export const BUILD = `${ROOT}/stage2`;
-// ThinLTO codegen cache, outside BUILD so CI can persist it. Content-addressed: keyed on bitcode + codegen options, so a
-// link-flag-only change hits, an -O/-D change misses. Both links share it, size-capped for the Actions cache.
-// prune_after=0s: expiry uses atime, which a hit never bumps, so time pruning could drop live entries. Size is the only limit.
 export const LTO_FLAGS = `-Wl,--thinlto-cache-dir=${ROOT}/lto.cache -Wl,--thinlto-cache-policy=cache_size_bytes=3g:prune_after=0s`;
 
 export const COMMON_CMAKE = [
@@ -54,13 +51,10 @@ export async function emenv() {
 		if (i > 0) env[line.slice(0, i)] = line.slice(i + 1);
 	}
 	env.PATH = `${REPO}/node_modules/.bin:${env.PATH}`;
-	// Fresh emsdk installs change mtimes, so the default compiler_check=mtime never hits in CI. Key the compiler by
-	// the emscripten-releases commit that built it. ccache hashes sources, headers and flags itself.
 	const tags = await Bun.file(`${ROOT}/emsdk/emscripten-releases-tags.json`).json();
 	const rel = tags.releases[EMSDK_VER];
 	if (!rel) throw new Error(`no emscripten-releases commit for ${EMSDK_VER}`);
 	env.CCACHE_COMPILERCHECK = `string:emscripten-releases-${rel}`;
-	// em++ is clang underneath, but ccache guesses "other" from the name
 	env.CCACHE_COMPILERTYPE = "clang";
 	env.CCACHE_BASEDIR = ROOT;
 	env.CCACHE_MAXSIZE ??= "4G";

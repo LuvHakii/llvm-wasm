@@ -1,5 +1,4 @@
-// Prod benchmark: bun test/bench-prod.ts [url] [runs] [stds,comma]
-// Drives https://necron.dev/apps/playground in Chromium. Cold = fresh browser (empty HTTP cache).
+// bun test/bench-prod.ts [url] [runs] [stds,comma]
 import {chromium, type Page} from 'playwright';
 import {readdirSync, readFileSync} from 'node:fs';
 
@@ -44,7 +43,6 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 const med = (a: number[]) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
 const f = (n: number) => n.toFixed(0);
 
-// Pss (MB) summed over the browser process tree; shared pages counted once.
 function tree(root: number): number[] {
 	const kids = new Map<number, number[]>();
 	for (const d of readdirSync('/proc').filter(x => /^\d+$/.test(x))) {
@@ -72,8 +70,7 @@ async function setCode(p: Page, code: string) {
 	await p.keyboard.insertText(code);
 }
 
-// compile+link+run ms: Run button swap attr on -> off, timed in page.
-// Clicks again every 300ms until the run registers: the click is ignored while the toolchain loads.
+// Clicks until the run registers: ignored while the toolchain loads.
 async function run(p: Page): Promise<number> {
 	const done = p.evaluate(() => new Promise<number>(res => {
 		const root = Array.from(document.querySelectorAll('button')).find(b => /Run/.test(b.textContent || ''))!.querySelector('[data-scope=swap]')!;
@@ -111,7 +108,6 @@ async function session(std: string) {
 	await p.getByText('C++ (Clang)').hover();
 	const t0 = Date.now();
 	await p.getByText(`C++${std}`, {exact: true}).click();
-	// Run button stays disabled until toolchain is downloaded, instantiated, PCH loaded
 	while (await p.evaluate(() => Array.from(document.querySelectorAll('button')).find(b => /Run/.test(b.textContent || ''))!.disabled)) await sleep(50);
 	const ready = Date.now() - t0;
 	await setCode(p, PROGS.hello);
@@ -120,7 +116,7 @@ async function session(std: string) {
 	const res: Record<string, number[]> = {};
 	for (const name of Object.keys(PROGS)) {
 		await setCode(p, PROGS[name]);
-		await run(p); // warm this program
+		await run(p);
 		res[name] = [];
 		for (let i = 0; i < 5; i++) res[name].push(await run(p));
 	}
