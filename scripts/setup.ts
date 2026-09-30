@@ -24,16 +24,17 @@ if (!existsSync(SYSROOT)) {
 	renameSync(`${ROOT}/wasi-sysroot-${WASI_SDK_VER}`, SYSROOT);
 }
 
-if (!existsSync(`${NATIVE}/bin/llvm-tblgen`) || !existsSync(`${NATIVE}/bin/clang-tblgen`)) {
+const HOST_TOOLS = ["llvm-tblgen", "clang-tblgen", "clang-tidy-confusable-chars-gen"];
+if (HOST_TOOLS.some(t => !existsSync(`${NATIVE}/bin/${t}`))) {
 	console.log("build stage1 tblgen");
 	const flags = [
 		"-DCMAKE_BUILD_TYPE=Release",
-		"-DLLVM_ENABLE_PROJECTS=clang",
+		"-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra",
 		"-DLLVM_TARGETS_TO_BUILD=WebAssembly",
 		"-DLLVM_INCLUDE_TESTS=OFF", "-DLLVM_INCLUDE_EXAMPLES=OFF",
 		"-DLLVM_INCLUDE_BENCHMARKS=OFF", "-DLLVM_INCLUDE_DOCS=OFF",
 		"-DLLVM_ENABLE_ZLIB=OFF", "-DLLVM_ENABLE_LIBXML2=OFF", "-DLLVM_ENABLE_TERMINFO=OFF",
 	];
 	await $`cmake -S ${SRC}/llvm -B ${NATIVE} -G Ninja ${flags}`;
-	await $`ninja -C ${NATIVE} -j${JOBS} llvm-tblgen clang-tblgen`;
+	await $`ninja -C ${NATIVE} -j${JOBS} ${HOST_TOOLS}`;
 }

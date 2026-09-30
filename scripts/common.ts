@@ -27,6 +27,7 @@ export const COMMON_CMAKE = [
 	"-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;lld",
 	`-DLLVM_TABLEGEN=${NATIVE}/bin/llvm-tblgen`,
 	`-DCLANG_TABLEGEN=${NATIVE}/bin/clang-tblgen`,
+	`-DCLANG_TIDY_CONFUSABLE_CHARS_GEN=${NATIVE}/bin/clang-tidy-confusable-chars-gen`,
 	"-DLLVM_BUILD_STATIC=ON",
 	"-DLLVM_INCLUDE_EXAMPLES=OFF",
 	"-DLLVM_INCLUDE_TESTS=OFF",

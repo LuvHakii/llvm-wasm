@@ -22,7 +22,7 @@ $ROOT                default ~/llvm-build, override for a bigger disk. never /tm
 $ROOT/llvm-project   shallow llvmorg-23.1.2 clone
 $ROOT/emsdk          pinned Emscripten SDK
 $ROOT/wasi-sysroot   WASI SDK 34 sysroot, pristine
-$ROOT/stage1         native llvm-tblgen + clang-tblgen (~67 MB)
+$ROOT/stage1         native llvm-tblgen, clang-tblgen, clang-tidy-confusable-chars-gen
 $ROOT/stage2         Emscripten cross build
 ccache               used when on PATH, keyed on the emscripten-releases commit
 $ROOT/lto.cache      ThinLTO link cache (3 GB cap), shared by both links
@@ -149,6 +149,10 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 - ccache keys the compiler on the emscripten-releases commit for `EMSDK_VER`, not
   mtime: every fresh emsdk install is new, so the default never hits in CI.
   `CCACHE_COMPILERTYPE=clang`, since it reads `em++` as "other".
+  Those settings are right for `em++` only, so no host compiler may run under
+  ccache: stage1 prebuilds `clang-tidy-confusable-chars-gen` next to the tblgens.
+  Without it LLVM cross-builds a NATIVE tree with GCC, which rejects the clang flags
+  ccache adds: `c++: error: unrecognized command-line option '-fcolor-diagnostics'`.
   `CCACHE_SLOPPINESS=pch_defines,time_macros`: LLVM compiles through CMake
   precompiled headers, and without it every call is "Could not use precompiled
   header", 4472 of 4511 in CI. The PCH itself is still hashed, so edits miss.
