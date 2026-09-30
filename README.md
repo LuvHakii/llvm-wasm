@@ -194,7 +194,6 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 
 ## Credits
 
-The awaited-input idea in `patches/clangd-transport.patch` (it replaced their
-`wait_stdin.patch`) and CMake config from
+CMake config and the awaited-input idea from
 [guyutongxue/clangd-in-browser](https://github.com/guyutongxue/clangd-in-browser)
 (MIT).
