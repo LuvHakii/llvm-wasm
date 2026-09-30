@@ -5,6 +5,7 @@ import {BUILD, COMMON_CMAKE, JOBS, LTO_FLAGS, REPO, ROOT, emenv, patch} from "./
 const env = await emenv();
 
 await patch("wait_stdin.patch");
+await patch("clangd-onmessage.patch");
 await patch("clangd-pch.patch");
 await patch("clang-tidy-trim.patch");
 await patch("clang-trim.patch");

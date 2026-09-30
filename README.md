@@ -89,6 +89,9 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   (40 of ~230, the rest is other arches' intrinsics) in `include/`, libs
   flat in `lib/wasm32-wasip1`. clang only adds the libc++ paths once it finds a
   `v1` under the generic `include/c++/`, so libc++ must live there, not per target.
+- clangd output is one `Module.onMessage(json)` call per LSP message, no
+  `Content-Length` framing (`patches/clangd-onmessage.patch`), so hosts need no
+  deframer. Input still goes through stdin, framed.
 - stdin chunking. Feed clangd discrete chunks, each followed by a `null`. A
   continuous stream leaves it blocked at zero stdout, also silent.
 - clangd needs a real browser, the compiler does not. Node has no `Worker`, so

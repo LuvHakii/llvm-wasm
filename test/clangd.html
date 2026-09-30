@@ -12,30 +12,12 @@ const WORKSPACE = '/src';
 const FILE = `${WORKSPACE}/main.cpp`;
 const SOURCE = `#include <bits/stdc++.h>\nusing namespace std;\nint main() {\n  vector<int> v{3,1,2};\n  v.\n  return 0;\n}\n`;
 
-const enc = new TextEncoder(), dec = new TextDecoder();
+const enc = new TextEncoder();
 const stdinChunks = [];
 const currentChunk = [];
-let stdoutBytes = 0;
 let resolveStdin = () => {};
-let buf = new Uint8Array(0);
 const inbox = [];
 
-function deframe(chunk) {
-	const n = new Uint8Array(buf.length + chunk.length);
-	n.set(buf, 0); n.set(chunk, buf.length); buf = n;
-	for (;;) {
-		let end = -1;
-		for (let i = 0; i + 3 < buf.length; i++)
-			if (buf[i] === 13 && buf[i+1] === 10 && buf[i+2] === 13 && buf[i+3] === 10) { end = i; break; }
-		if (end < 0) return;
-		const m = /content-length:\s*(\d+)/i.exec(dec.decode(buf.subarray(0, end)));
-		if (!m) { buf = buf.subarray(end + 4); continue; }
-		const len = Number(m[1]), start = end + 4;
-		if (buf.length - start < len) return;
-		inbox.push(JSON.parse(dec.decode(buf.subarray(start, start + len))));
-		buf = buf.subarray(start + len);
-	}
-}
 function send(o) {
 	const body = JSON.stringify(o);
 	const len = enc.encode(body).length;
@@ -54,7 +36,7 @@ const waitFor = async (pred, label, ms = 60000) => {
 	for (;;) {
 		const hit = inbox.find(pred);
 		if (hit) return hit;
-		if (performance.now() > dl) throw new Error('timeout: ' + label + ` (stdoutBytes=${stdoutBytes})`);
+		if (performance.now() > dl) throw new Error('timeout: ' + label);
 		await new Promise(r => setTimeout(r, 25));
 	}
 };
@@ -65,14 +47,12 @@ try {
 	const {default: Clangd} = await import(`./clangd-${new URLSearchParams(location.search).get('v')}.js`);
 	const {parseTar} = await import('/node_modules/nanotar/dist/index.mjs');
 	const sysroot = parseTar(await (await fetch('./include.tar')).arrayBuffer());
-	let pending = [];
 	let errLine = '';
-	let stdoutBytes = 0;
 	const clangd = await Clangd({
 		thisProgram: '/usr/bin/clangd',
 		stdinReady: async () => { if (!stdinChunks.length) return new Promise(r => (resolveStdin = r)); },
 		stdin: readStdin,
-		stdout: c => { stdoutBytes++; pending.push(c); queueMicrotask(() => { if (pending.length) { deframe(Uint8Array.from(pending)); pending = []; } }); },
+		onMessage: json => inbox.push(JSON.parse(json)),
 		stderr: c => { errLine += String.fromCharCode(c); if (c === 10) { log({stderr: errLine.trim()}); errLine = ''; } },
 		onExit: code => log({exit: code}),
 		onAbort: reason => log({abort: reason})
@@ -102,7 +82,6 @@ try {
 	]}}));
 	clangd.callMain(['--background-index=false']);
 
-	setTimeout(() => log({after5s: {stdoutBytes, inbox: inbox.length}}), 5000);
 	const t1 = performance.now();
 	send({jsonrpc:'2.0', id:1, method:'initialize', params:{processId:null, rootUri:`file://${WORKSPACE}`, capabilities:{}}});
 	await waitFor(m => m.id === 1, 'initialize');

@@ -1,0 +1,24 @@
+diff --git a/clang-tools-extra/clangd/JSONTransport.cpp b/clang-tools-extra/clangd/JSONTransport.cpp
+index dae024f9..57ecc5ae 100644
+--- a/clang-tools-extra/clangd/JSONTransport.cpp
++++ b/clang-tools-extra/clangd/JSONTransport.cpp
+@@ -38,6 +38,7 @@ Ret doUntilStdinAvailable(
+ #include "llvm/Support/Error.h"
+ #include <optional>
+ #include <system_error>
++#include <emscripten.h>
+ 
+ namespace clang {
+ namespace clangd {
+@@ -159,9 +160,8 @@ private:
+     OutputBuffer.clear();
+     llvm::raw_svector_ostream OS(OutputBuffer);
+     OS << llvm::formatv(Pretty ? "{0:2}" : "{0}", Message);
+-    Out << "Content-Length: " << OutputBuffer.size() << "\r\n\r\n"
+-        << OutputBuffer;
+-    Out.flush();
++    MAIN_THREAD_EM_ASM({ Module.onMessage(UTF8ToString($0, $1)); },
++                       OutputBuffer.data(), OutputBuffer.size());
+     vlog(">>> {0}\n", OutputBuffer);
+   }
+ 
