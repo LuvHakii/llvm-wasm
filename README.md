@@ -149,6 +149,9 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 - ccache keys the compiler on the emscripten-releases commit for `EMSDK_VER`, not
   mtime: every fresh emsdk install is new, so the default never hits in CI.
   `CCACHE_COMPILERTYPE=clang`, since it reads `em++` as "other".
+  `CCACHE_SLOPPINESS=pch_defines,time_macros`: LLVM compiles through CMake
+  precompiled headers, and without it every call is "Could not use precompiled
+  header", 4472 of 4511 in CI. The PCH itself is still hashed, so edits miss.
 - ThinLTO cache `prune_after=0s`. Pruning goes by atime and a hit never bumps it, so
   time expiry drops live entries. The 3 GB size cap is the only limit.
 - `JOBS` is 8, not nproc, and `LLVM_PARALLEL_LINK_JOBS=1`. Link steps eat

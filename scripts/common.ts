@@ -56,6 +56,7 @@ export async function emenv() {
 	if (!rel) throw new Error(`no emscripten-releases commit for ${EMSDK_VER}`);
 	env.CCACHE_COMPILERCHECK = `string:emscripten-releases-${rel}`;
 	env.CCACHE_COMPILERTYPE = "clang";
+	env.CCACHE_SLOPPINESS = "pch_defines,time_macros";
 	env.CCACHE_BASEDIR = ROOT;
 	env.CCACHE_MAXSIZE ??= "4G";
 	return env;
