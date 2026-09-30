@@ -6,6 +6,7 @@ const env = await emenv();
 
 await patch("wait_stdin.patch");
 await patch("clangd-pch.patch");
+await patch("clang-tidy-trim.patch");
 
 const api = new Function(`${await Bun.file(`${ROOT}/emsdk/upstream/emscripten/src/settings.js`).text()}; return INCOMING_MODULE_JS_API`)();
 

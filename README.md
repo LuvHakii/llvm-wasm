@@ -80,6 +80,10 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   gzip 2.2x, landing at 14.7 MiB, under the cap. clang-tidy checks are linked
   (`CLANGD_TIDY_CHECKS` default ON: `clangd-jspi` 28.2 to 33.6 MB raw, 6.6 to 7.5 MB brotli); none run until `.clangd` adds them. `clang-analyzer-*` and query-based
   custom checks are off: they link the whole static analyzer and clang-query.
+  `patches/clang-tidy-trim.patch` keeps bugprone, cert, concurrency, cppcoreguidelines,
+  misc, modernize, performance, portability and readability, and drops the checks clangd
+  refuses to run anyway (`TidyProvider.cpp` disable list), which alone pulled in clang's
+  dataflow framework.
 - Sysroot layout matches clang's WASI defaults, so no `--sysroot` or `-isystem`:
   libc++ (eh variant) at `include/c++/v1`, clang's core + wasm builtin headers
   (40 of ~230, the rest is other arches' intrinsics) in `include/`, libs
