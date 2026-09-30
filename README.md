@@ -89,11 +89,10 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   (40 of ~230, the rest is other arches' intrinsics) in `include/`, libs
   flat in `lib/wasm32-wasip1`. clang only adds the libc++ paths once it finds a
   `v1` under the generic `include/c++/`, so libc++ must live there, not per target.
-- clangd output is one `Module.onMessage(json)` call per LSP message, no
-  `Content-Length` framing (`patches/clangd-onmessage.patch`), so hosts need no
-  deframer. Input still goes through stdin, framed.
-- stdin chunking. Feed clangd discrete chunks, each followed by a `null`. A
-  continuous stream leaves it blocked at zero stdout, also silent.
+- clangd talks LSP as whole JSON strings, no `Content-Length` framing, no stdin
+  (`patches/clangd-transport.patch`): it awaits `Module.nextMessage()` for each
+  incoming message and calls `Module.onMessage(json)` for each outgoing one. From
+  worker threads that call is proxied to the main thread synchronously.
 - clangd needs a real browser, the compiler does not. Node has no `Worker`, so
   `ENVIRONMENT=worker` dies at `Worker is not defined`. Under bun the whole
   compile + link + run passes headless from the multicall binary, both tools in
@@ -157,7 +156,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   ~100 MB more memory: per-thread heaps keep each thread's peak, wasm memory never
   shrinks, and Emscripten reserves its arenas 64 MiB at a time (192 -> 574 MB).
 - Two clangd builds, `clangd-jspi` and `clangd-asyncify`, same objects linked twice
-  (ThinLTO cache, so the second link skips codegen). The stdin wait needs a
+  (ThinLTO cache, so the second link skips codegen). The message wait needs a
   suspend; JSPI does it in the engine, Asyncify rewrites the wasm: 9.6 vs 14.9 MB
   gzip, preamble 0.7 s vs 1.4 s. Pick `typeof WebAssembly.Suspending === 'function' ?
   'clangd-jspi.js' : 'clangd-asyncify.js'`. JSPI's `callMain` returns a Promise.
@@ -195,6 +194,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 
 ## Credits
 
-`patches/wait_stdin.patch` and CMake config from
+The awaited-input idea in `patches/clangd-transport.patch` (it replaced their
+`wait_stdin.patch`) and CMake config from
 [guyutongxue/clangd-in-browser](https://github.com/guyutongxue/clangd-in-browser)
 (MIT).

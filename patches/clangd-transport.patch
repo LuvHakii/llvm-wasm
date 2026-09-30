@@ -1,16 +1,22 @@
 diff --git a/clang-tools-extra/clangd/JSONTransport.cpp b/clang-tools-extra/clangd/JSONTransport.cpp
-index dae024f9..57ecc5ae 100644
+index 3c0e1984..d6a01262 100644
 --- a/clang-tools-extra/clangd/JSONTransport.cpp
 +++ b/clang-tools-extra/clangd/JSONTransport.cpp
-@@ -38,6 +38,7 @@ Ret doUntilStdinAvailable(
+@@ -15,6 +15,13 @@
  #include "llvm/Support/Error.h"
  #include <optional>
  #include <system_error>
 +#include <emscripten.h>
++
++EM_ASYNC_JS(int, nextMessageLength, (), {
++  Module.pending = await Module.nextMessage();
++  return lengthBytesUTF8(Module.pending);
++})
++EM_JS(void, copyMessage, (char *p, int n), { stringToUTF8(Module.pending, p, n + 1); })
  
  namespace clang {
  namespace clangd {
-@@ -159,9 +160,8 @@ private:
+@@ -136,16 +143,16 @@ private:
      OutputBuffer.clear();
      llvm::raw_svector_ostream OS(OutputBuffer);
      OS << llvm::formatv(Pretty ? "{0:2}" : "{0}", Message);
@@ -22,3 +28,13 @@ index dae024f9..57ecc5ae 100644
      vlog(">>> {0}\n", OutputBuffer);
    }
  
+   // Read raw string messages from input stream.
+   bool readRawMessage(std::string &JSON) {
+-    return Style == JSONStreamStyle::Delimited ? readDelimitedMessage(JSON)
+-                                               : readStandardMessage(JSON);
++    JSON.resize(nextMessageLength());
++    copyMessage(JSON.data(), JSON.size());
++    return true;
+   }
+   bool readDelimitedMessage(std::string &JSON);
+   bool readStandardMessage(std::string &JSON);

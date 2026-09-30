@@ -12,24 +12,13 @@ const WORKSPACE = '/src';
 const FILE = `${WORKSPACE}/main.cpp`;
 const SOURCE = `#include <bits/stdc++.h>\nusing namespace std;\nint main() {\n  vector<int> v{3,1,2};\n  v.\n  return 0;\n}\n`;
 
-const enc = new TextEncoder();
-const stdinChunks = [];
-const currentChunk = [];
-let resolveStdin = () => {};
+const queue = [];
+let wake = null;
 const inbox = [];
 
 function send(o) {
-	const body = JSON.stringify(o);
-	const len = enc.encode(body).length;
-	stdinChunks.push(`Content-Length: ${len}\r\n`, '\r\n', body);
-	resolveStdin();
-}
-function readStdin() {
-	if (currentChunk.length === 0) {
-		if (stdinChunks.length === 0) return null;
-		currentChunk.push(...enc.encode(stdinChunks.shift()), null);
-	}
-	return currentChunk.shift();
+	const json = JSON.stringify(o);
+	if (wake) { wake(json); wake = null; } else queue.push(json);
 }
 const waitFor = async (pred, label, ms = 60000) => {
 	const dl = performance.now() + ms;
@@ -50,8 +39,7 @@ try {
 	let errLine = '';
 	const clangd = await Clangd({
 		thisProgram: '/usr/bin/clangd',
-		stdinReady: async () => { if (!stdinChunks.length) return new Promise(r => (resolveStdin = r)); },
-		stdin: readStdin,
+		nextMessage: () => queue.length ? queue.shift() : new Promise(r => (wake = r)),
 		onMessage: json => inbox.push(JSON.parse(json)),
 		stderr: c => { errLine += String.fromCharCode(c); if (c === 10) { log({stderr: errLine.trim()}); errLine = ''; } },
 		onExit: code => log({exit: code}),
