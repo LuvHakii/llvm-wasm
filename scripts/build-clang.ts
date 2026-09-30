@@ -3,10 +3,12 @@ import {cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync} from "n
 import {basename} from "node:path";
 import {
 	BUILD, COMMON_CMAKE, JOBS, LLVM_VER, LTO_FLAGS, REPO, ROOT, SRC, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER,
-	emenv, extractTar,
+	emenv, extractTar, patch,
 } from "./common.ts";
 
 const env = await emenv();
+
+await patch("lld-wasm-only.patch");
 
 const linker = [
 	"-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",

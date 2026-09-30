@@ -92,6 +92,9 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   one process, since neither has a pthread pool. clangd's 16-worker pool never
   comes up: bun drops the `Worker` `name` option, and patching that only moves
   the hang. So Chromium via Playwright, `dist/` under COOP/COEP.
+- `patches/lld-wasm-only.patch`: lld links its ELF, COFF, MachO and MinGW drivers
+  and picks one by `argv[0]` at runtime, so LTO keeps all of them. Only `wasm-ld`
+  runs here.
 - `wasm-ld --threads=1`. lld is linked `-pthread` with no `PTHREAD_POOL_SIZE`,
   so a thread spawn finds an empty pool and kills the page with no error, and
   only once lld is far enough to write output, so an early exit looks fine.
