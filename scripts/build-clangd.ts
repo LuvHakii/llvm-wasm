@@ -19,7 +19,10 @@ const linker = [
 	LTO_FLAGS,
 ].join(" ");
 
-const extra = ["-DCLANGD_BUILD_XPC=OFF", "-DCLANGD_ENABLE_REMOTE=OFF"];
+const extra = [
+	"-DCLANGD_BUILD_XPC=OFF", "-DCLANGD_ENABLE_REMOTE=OFF",
+	"-DCLANG_TIDY_ENABLE_STATIC_ANALYZER=OFF", "-DCLANG_TIDY_ENABLE_QUERY_BASED_CUSTOM_CHECKS=OFF",
+];
 await $`emcmake cmake ${COMMON_CMAKE} ${extra} -B ${BUILD} -DCMAKE_EXE_LINKER_FLAGS=${linker}`.env(env);
 
 const link = (await $`ninja -C ${BUILD} -t commands clangd`.env(env).text()).trim().split("\n").at(-1)!;
