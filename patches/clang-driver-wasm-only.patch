@@ -1,0 +1,32 @@
+diff --git a/clang/lib/Driver/Driver.cpp b/clang/lib/Driver/Driver.cpp
+index e606cdc4..4f8aab6c 100644
+--- a/clang/lib/Driver/Driver.cpp
++++ b/clang/lib/Driver/Driver.cpp
+@@ -1795,8 +1795,7 @@ Compilation *Driver::BuildCompilation(ArrayRef<const char *> ArgList) {
+   // Populate the tool chains for the offloading devices, if any.
+   CreateOffloadingDeviceToolChains(*C, Inputs);
+ 
+-  bool UseModulesDriver = C->getArgs().hasFlag(
+-      options::OPT_fmodules_driver, options::OPT_fno_modules_driver, false);
++  bool UseModulesDriver = false;
+   modules::StdModuleManifest ModulesManifest;
+   if (UseModulesDriver) {
+     Diags.Report(diag::remark_performing_driver_managed_module_build);
+@@ -7029,6 +7028,7 @@ std::string Driver::GetClPchPath(Compilation &C, StringRef BaseName) const {
+ const ToolChain &Driver::getOffloadToolChain(
+     const llvm::opt::ArgList &Args, const Action::OffloadKind Kind,
+     const llvm::Triple &Target, const llvm::Triple &AuxTarget) const {
++  llvm::report_fatal_error("llvm-wasm: offloading is not supported");
+   std::unique_ptr<ToolChain> &TC =
+       ToolChains[Target.str() + "/" + AuxTarget.str()];
+   std::unique_ptr<ToolChain> &HostTC = ToolChains[AuxTarget.str()];
+@@ -7102,6 +7102,9 @@ const ToolChain &Driver::getToolChain(const ArgList &Args,
+                                       const llvm::Triple &Target) const {
+ 
+   auto &TC = ToolChains[Target.str()];
++  if (!TC)
++    TC = std::make_unique<toolchains::WebAssembly>(*this, Target, Args);
++  return *TC;
+   if (!TC) {
+     switch (Target.getOS()) {
+     case llvm::Triple::AIX:

@@ -97,6 +97,12 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   one process, since neither has a pthread pool. clangd's 16-worker pool never
   comes up: bun drops the `Worker` `name` option, and patching that only moves
   the hang. So Chromium via Playwright, `dist/` under COOP/COEP.
+- `patches/clang-driver-wasm-only.patch`: clang's driver builds every OS and
+  offload toolchain from the triple at runtime, so LTO keeps all 68. The patch
+  always returns the WebAssembly toolchain, makes offloading (CUDA, HIP, SYCL,
+  OpenMP) a fatal error and turns off `-fmodules-driver`. A non-wasm `--target`
+  silently gets WebAssembly's paths. `clangd-no-modules.patch` drops clangd's C++20
+  module scanning: one file, nothing to import, no `std.cppm` in the sysroot.
 - `patches/clang-trim.patch`, both binaries: the experimental constant interpreter
   (`-fexperimental-new-constant-interpreter`, off by default, ~1.4 MB each) becomes a
   fatal error, and target builtin codegen handles WebAssembly only (0.49 MB, every

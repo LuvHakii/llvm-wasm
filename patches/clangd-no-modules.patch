@@ -1,0 +1,28 @@
+diff --git a/clang-tools-extra/clangd/ClangdLSPServer.cpp b/clang-tools-extra/clangd/ClangdLSPServer.cpp
+index 43e8b35e..043e03bf 100644
+--- a/clang-tools-extra/clangd/ClangdLSPServer.cpp
++++ b/clang-tools-extra/clangd/ClangdLSPServer.cpp
+@@ -565,10 +565,6 @@ void ClangdLSPServer::onInitialize(const InitializeParams &Params,
+   CDB.emplace(BaseCDB.get(), Params.initializationOptions.fallbackFlags,
+               std::move(Mangler));
+ 
+-  if (Opts.EnableExperimentalModulesSupport) {
+-    ModulesManager.emplace(*CDB);
+-    Opts.ModulesManager = &*ModulesManager;
+-  }
+ 
+   {
+     // Switch caller's context with LSPServer's background context. Since we
+diff --git a/clang-tools-extra/clangd/GlobalCompilationDatabase.cpp b/clang-tools-extra/clangd/GlobalCompilationDatabase.cpp
+index adb771ec..4d836bf9 100644
+--- a/clang-tools-extra/clangd/GlobalCompilationDatabase.cpp
++++ b/clang-tools-extra/clangd/GlobalCompilationDatabase.cpp
+@@ -771,7 +771,7 @@ DirectoryBasedGlobalCompilationDatabase::getProjectModules(PathRef File) const {
+   if (!Res)
+     return {};
+ 
+-  return clang::clangd::getProjectModules(Res->CDB, Opts.TFS);
++  return nullptr;
+ }
+ 
+ OverlayCDB::OverlayCDB(const GlobalCompilationDatabase *Base,

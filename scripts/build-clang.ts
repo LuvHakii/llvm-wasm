@@ -10,6 +10,7 @@ const env = await emenv();
 
 await patch("lld-wasm-only.patch");
 await patch("clang-trim.patch");
+await patch("clang-driver-wasm-only.patch");
 
 const linker = [
 	"-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
