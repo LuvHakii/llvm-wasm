@@ -60,6 +60,9 @@ jobs:
           key: ccache-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ github.sha }}
           restore-keys: ccache-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-
 
+      - name: zero ccache stats
+        run: ccache -z
+
       - name: install deps
         run: |
           bun install --frozen-lockfile
