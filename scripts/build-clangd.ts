@@ -1,6 +1,6 @@
 import {$} from "bun";
 import {cpSync, mkdirSync} from "node:fs";
-import {BUILD, COMMON_CMAKE, JOBS, REPO, ROOT, emenv, patch} from "./common.ts";
+import {BUILD, COMMON_CMAKE, JOBS, LTO_FLAGS, REPO, ROOT, emenv, patch} from "./common.ts";
 
 const env = await emenv();
 
@@ -16,7 +16,7 @@ const linker = [
 	"-s PTHREAD_POOL_SIZE='Math.max(navigator.hardwareConcurrency, 8)'",
 	"-s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed",
 	`-s INCOMING_MODULE_JS_API=${[...api, "mainScriptUrlOrBlob"]}`,
-	"-Wl,--thinlto-cache-dir=lto.cache",
+	LTO_FLAGS,
 ].join(" ");
 
 const extra = ["-DCLANGD_TIDY_CHECKS=OFF", "-DCLANGD_BUILD_XPC=OFF", "-DCLANGD_ENABLE_REMOTE=OFF"];

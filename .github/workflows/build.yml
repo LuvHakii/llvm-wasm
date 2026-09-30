@@ -18,6 +18,7 @@ permissions:
 env:
   ROOT: /home/runner/llvm-build
   JOBS: 4
+  CCACHE_DIR: /home/runner/.cache/ccache
 
 jobs:
   toolchain:
@@ -46,6 +47,19 @@ jobs:
             /home/runner/llvm-build/stage1
           key: ${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ env.WASI_SDK_VER }}-${{ hashFiles('scripts/setup.ts') }}
 
+      - name: ccache
+        run: sudo apt-get install -y --no-install-recommends ccache
+
+      - name: restore ccache + ThinLTO cache
+        id: ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cache/ccache
+            /home/runner/llvm-build/lto.cache
+          key: ccache-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ github.sha }}
+          restore-keys: ccache-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-
+
       - name: install deps
         run: |
           bun install --frozen-lockfile
@@ -62,6 +76,19 @@ jobs:
 
       - name: build llvm multicall
         run: bun scripts/build-clang.ts
+
+      - name: save ccache + ThinLTO cache
+        if: always() && steps.ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cache/ccache
+            /home/runner/llvm-build/lto.cache
+          key: ccache-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ github.sha }}
+
+      - name: cache stats
+        if: always()
+        run: ccache -s; du -sh ~/.cache/ccache /home/runner/llvm-build/lto.cache
 
       - name: "PCHs, gate: compile + link + run, tty"
         run: |

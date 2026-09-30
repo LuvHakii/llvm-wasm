@@ -2,7 +2,7 @@ import {$} from "bun";
 import {cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync} from "node:fs";
 import {basename} from "node:path";
 import {
-	BUILD, COMMON_CMAKE, JOBS, LLVM_VER, REPO, ROOT, SRC, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER,
+	BUILD, COMMON_CMAKE, JOBS, LLVM_VER, LTO_FLAGS, REPO, ROOT, SRC, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER,
 	emenv, extractTar,
 } from "./common.ts";
 
@@ -13,7 +13,7 @@ const linker = [
 	"-s INITIAL_MEMORY=64MB", "-s ALLOW_MEMORY_GROWTH", "-s MAXIMUM_MEMORY=1GB", "-s STACK_SIZE=1MB",
 	"-s EXPORTED_RUNTIME_METHODS=FS,callMain", "-s MODULARIZE", "-s EXPORT_ES6",
 	"-s EXPORTED_FUNCTIONS=_main",
-	"--emit-tsd=llvm.d.ts",
+	"--emit-tsd=llvm.d.ts", LTO_FLAGS,
 ].join(" ");
 
 const extra = [

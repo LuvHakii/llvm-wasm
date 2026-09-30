@@ -24,6 +24,8 @@ $ROOT/emsdk          pinned Emscripten SDK
 $ROOT/wasi-sysroot   WASI SDK 34 sysroot, pristine
 $ROOT/stage1         native llvm-tblgen + clang-tblgen (~67 MB)
 $ROOT/stage2         Emscripten cross build
+ccache               used when on PATH, keyed on the emscripten-releases commit
+$ROOT/lto.cache      ThinLTO link cache (3 GB cap), shared by both links
 ```
 
 ## Build
