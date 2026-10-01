@@ -10,6 +10,7 @@ await patch("clang-tidy-trim.patch");
 await patch("clang-trim.patch");
 await patch("clang-driver-wasm-only.patch");
 await patch("clangd-no-modules.patch");
+await patch("clangd-no-banner.patch");
 
 const api = new Function(`${await Bun.file(`${ROOT}/emsdk/upstream/emscripten/src/settings.js`).text()}; return INCOMING_MODULE_JS_API`)();
 
