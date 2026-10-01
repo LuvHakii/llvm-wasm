@@ -65,6 +65,13 @@ per-file cap, not a ratio.
 Raw c++20 and c++23 blow the cap, gzipped they fit. 66.9 MiB across all five,
 a user fetches one.
 
+A shipped PCH serves any `-O*`, `-g*`, `-W*` and `-D`/`-U` (except `_LIBCPP_*`):
+codegen comes from the consuming compile. A flag that changes how the headers compile
+(`-funsigned-char`, `-fno-builtin`, `-fno-sized-deallocation`,
+`-fno-aligned-allocation`, `-ffast-math`, `-D_LIBCPP_*`, ...) silently gets the PCH's
+behaviour instead; the host generates a matching PCH with the `gen-pch.ts` command plus
+those flags (c++20: 5 s, 191 MB peak).
+
 99 of 104 candidate headers compile, identically at c++11 through c++23, since
 libc++ 22 guards the newer ones internally. One shim, every standard. Missing:
 `generator`, `spanstream`, `stacktrace`, `stdfloat`, and `csignal`, which works
