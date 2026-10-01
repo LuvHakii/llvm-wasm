@@ -74,6 +74,37 @@ for (const std of STDS) await check(std, async () => {
 	return {pch: gen.file.length, tGen: gen.ms, tCompile: use.ms, tLink: ld.ms};
 });
 
+const PBDS = `#include <iostream>
+#include <ext/pb_ds/assoc_container.hpp>
+#include <ext/pb_ds/tree_policy.hpp>
+#include <ext/pb_ds/trie_policy.hpp>
+#include <ext/pb_ds/priority_queue.hpp>
+using namespace __gnu_pbds;
+int main() {
+	tree<int, null_type, std::less<int>, rb_tree_tag, tree_order_statistics_node_update> s;
+	for (int x : {5, 1, 9, 3}) s.insert(x);
+	gp_hash_table<int, int> g;
+	cc_hash_table<int, int> c;
+	g[7] = 70;
+	c[8] = 80;
+	__gnu_pbds::priority_queue<int, std::greater<int>, pairing_heap_tag> a, b;
+	auto it = a.push(4);
+	b.push(2);
+	a.modify(it, 1);
+	a.join(b);
+	trie<std::string, null_type, trie_string_access_traits<>, pat_trie_tag, trie_prefix_search_node_update> t;
+	for (auto w : {"apple", "app", "bat"}) t.insert(w);
+	auto r = t.prefix_range("ap");
+	std::cout << *s.find_by_order(2) << s.order_of_key(4) << g[7] << c[8] << a.top() << a.size() << std::distance(r.first, r.second);
+}
+`;
+await check("pb_ds", async () => {
+	const cc = await tool("clang", [...BASE, "-std=c++17", "-c", "/p.cpp", "-o", "/main.o"], {"/p.cpp": PBDS}, "/main.o");
+	const out = await run((await link(cc.file)).file);
+	if (out !== "527080122") throw {stdout: out};
+	return {};
+});
+
 const ICANON = 2, ECHO = 8, VMIN = 6, C_CC = 17;
 let termios = new Uint8Array(60), action = -1;
 new DataView(termios.buffer).setUint32(12, ICANON | ECHO, true);

@@ -2,7 +2,7 @@ import {$} from "bun";
 import {cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync} from "node:fs";
 import {basename} from "node:path";
 import {
-	BUILD, COMMON_CMAKE, JOBS, LLVM_VER, LTO_FLAGS, REPO, ROOT, SRC, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER,
+	BUILD, COMMON_CMAKE, GCC_VER, JOBS, LLVM_VER, LTO_FLAGS, REPO, ROOT, SRC, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER,
 	emenv, extractTar, patch,
 } from "./common.ts";
 
@@ -52,8 +52,18 @@ renameSync(`${INC}/eh/c++`, `${SLIM}/include/c++`);
 for (const p of [`${INC}/eh`, `${INC}/noeh`, `${SLIM}/include/c++/v1/__cxx03`]) rmSync(p, {recursive: true, force: true});
 await $`patch -p1 -d ${SLIM} < ${REPO}/sysroot/tty.patch`;
 await $`patch -p1 -d ${SLIM} < ${REPO}/sysroot/sigaction.patch`;
-mkdirSync(`${SLIM}/include/c++/v1/bits`, {recursive: true});
-cpSync(`${REPO}/sysroot/bits-stdc++.h`, `${SLIM}/include/c++/v1/bits/stdc++.h`);
+const CXX = `${SLIM}/include/c++/v1`;
+cpSync(`${REPO}/sysroot/bits-stdc++.h`, `${CXX}/bits/stdc++.h`);
+
+const GCC = `${ROOT}/gcc-${GCC_VER}`;
+if (!existsSync(GCC)) {
+	await $`git clone --depth 1 --branch releases/gcc-${GCC_VER} --filter=blob:none --sparse https://github.com/gcc-mirror/gcc.git ${GCC}`;
+	await $`git -C ${GCC} sparse-checkout set libstdc++-v3/include/ext/pb_ds`;
+}
+for (const f of ["pb_ds", "typelist.h"]) cpSync(`${GCC}/libstdc++-v3/include/ext/${f}`, `${CXX}/ext/${f}`, {recursive: true});
+for (const h of ["bits/c++config.h", "debug/debug.h", "tr1/type_traits", "tr1/functional", "ext/type_traits.h", "ext/numeric_traits.h"]) {
+	cpSync(`${REPO}/sysroot/libstdcxx-shim.h`, `${CXX}/${h}`);
+}
 
 const libs = `${SYSROOT}/lib/wasm32-wasip1`;
 for (const pattern of ["*.{a,o}", "eh/*.a"]) {

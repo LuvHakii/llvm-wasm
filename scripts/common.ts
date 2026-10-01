@@ -6,6 +6,7 @@ export const LLVM_VER = "23.1.2";
 export const EMSDK_VER = "6.0.10";
 export const WASI_SDK_MAJOR = "34";
 export const WASI_SDK_VER = `${WASI_SDK_MAJOR}.0`;
+export const GCC_VER = "16.2.0";
 
 export const ROOT = process.env.ROOT ?? `${homedir()}/llvm-build`;
 export const JOBS = process.env.JOBS ?? "8";

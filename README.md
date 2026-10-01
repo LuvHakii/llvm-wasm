@@ -7,6 +7,7 @@
 | LLVM | `llvmorg-23.1.2` |
 | Emscripten | 6.0.10 |
 | WASI SDK sysroot | 34 |
+| GCC (pb_ds headers) | 16.2.0 |
 
 ## Layout
 
@@ -160,6 +161,10 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   last `munmap`, or when another file becomes the recent one: switching `-std` keeps one
   PCH in the heap, not five, unlinked or not. A writable file takes the stock copying
   path. clang and wasm-ld map each file once per instance, so they link without it.
+- `__gnu_pbds` on libc++: GCC's `ext/pb_ds` and `ext/typelist.h` go into
+  `include/c++/v1/ext`, and `sysroot/libstdcxx-shim.h` is copied to the six libstdc++
+  headers they include. `-D_GLIBCXX_DEBUG` breaks it: the debug path wants
+  `ext/throw_allocator.h`. Not in `bits/stdc++.h`, same as GCC.
 - No clang-format binary. clangd formats (`textDocument/formatting`, range and
   on-type) with the same library and reads `.clang-format`.
 - ThinLTO (`LLVM_ENABLE_LTO=Thin`) on both builds. `Release` (-O2) blows the size
