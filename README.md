@@ -171,7 +171,9 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 - `__gnu_pbds` on libc++: GCC's `ext/pb_ds` and `ext/typelist.h` go into
   `include/c++/v1/ext`, and `sysroot/libstdcxx-shim.h` is copied to the six libstdc++
   headers they include. `-D_GLIBCXX_DEBUG` breaks it: the debug path wants
-  `ext/throw_allocator.h`. Not in `bits/stdc++.h`, same as GCC.
+  `ext/throw_allocator.h`. Not in `bits/stdc++.h`, same as GCC, but the PCHs carry it:
+  `gen-pch.ts` adds `-include ext/pb_ds/*.hpp`, +2.5 MB raw (+1.1 MB brotli) each, and a
+  pb_ds program compiles 2x faster. Code that never names `__gnu_pbds` sees no difference.
 - No clang-format binary. clangd formats (`textDocument/formatting`, range and
   on-type) with the same library and reads `.clang-format`.
 - ThinLTO (`LLVM_ENABLE_LTO=Thin`) on both builds. `Release` (-O2) blows the size

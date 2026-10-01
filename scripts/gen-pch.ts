@@ -5,6 +5,7 @@ import {parseTar} from "nanotar";
 const DIST = resolve(process.argv[2] ?? "./dist");
 const STDS = ["c++11", "c++14", "c++17", "c++20", "c++23"];
 const SHIM = "/include/c++/v1/bits/stdc++.h";
+const EXTRA = ["assoc_container", "hash_policy", "list_update_policy", "priority_queue", "tree_policy", "trie_policy"].flatMap(h => ["-include", `ext/pb_ds/${h}.hpp`]);
 const BASE = ["-fintegrated-cc1", "--target=wasm32-wasip1", "-O0", "-fwasm-exceptions", "-mllvm", "-wasm-use-legacy-eh=false"];
 const LD = ["--threads=1", "-m", "wasm32", "-L/lib/wasm32-wasip1", "/lib/wasm32-wasip1/crt1.o", "/main.o"];
 const LIBS = ["-lc", "-lc++", "-lc++abi", "-lunwind", "-lclang_rt.builtins", "-o", "/main.wasm"];
@@ -62,7 +63,7 @@ async function check(name: string, f: () => Promise<object>) {
 }
 
 for (const std of STDS) await check(std, async () => {
-	const gen = await tool("clang", [...BASE, "-x", "c++-header", `-std=${std}`, "-fpch-instantiate-templates", SHIM, "-o", "/stdc++.pch"], {}, "/stdc++.pch");
+	const gen = await tool("clang", [...BASE, "-x", "c++-header", `-std=${std}`, "-fpch-instantiate-templates", ...EXTRA, SHIM, "-o", "/stdc++.pch"], {}, "/stdc++.pch");
 	const use = await tool("clang",
 		[...BASE, `-std=${std}`, "-Xclang", "-fno-validate-pch", "-include-pch", "/stdc++.pch",
 			"-c", "/probe.cpp", "-o", "/main.o"],
@@ -99,7 +100,8 @@ int main() {
 }
 `;
 await check("pb_ds", async () => {
-	const cc = await tool("clang", [...BASE, "-std=c++17", "-c", "/p.cpp", "-o", "/main.o"], {"/p.cpp": PBDS}, "/main.o");
+	const pch = new Uint8Array(await Bun.file(`${DIST}/pch/stdc++-c++17.pch`).arrayBuffer());
+	const cc = await tool("clang", [...BASE, "-std=c++17", "-Xclang", "-fno-validate-pch", "-include-pch", "/stdc++.pch", "-c", "/p.cpp", "-o", "/main.o"], {"/p.cpp": PBDS, "/stdc++.pch": pch}, "/main.o");
 	const out = await run((await link(cc.file)).file);
 	if (out !== "527080122") throw {stdout: out};
 	return {};
