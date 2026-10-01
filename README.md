@@ -148,6 +148,18 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   linear memory, one copy shared by every instance. Not `--preload-file`: its
   index lives in each `.js` and it fetches by bare name, which hangs under bun.
   Mount the PCH the same way: `FS.writeFile` copies it, +30 MB per instance at c++20.
+- clangd links `scripts/memfs-mmap.js` (`--js-library`, replaces `_mmap_js` and
+  `_munmap_js`). MEMFS `mmap` copies the file into linear memory unless the mapping is
+  `MAP_SHARED` and the file already sits in the heap. LLVM maps read-only files
+  `MAP_PRIVATE`, so each AST build, preamble build and completion copied the c++20 PCH
+  again: 3 x 30 MB resident, linear memory past 192 MB. A file with no write bit
+  (`createDataFile(..., canWrite=false, ...)`) is instead copied into the heap on its first
+  `mmap`, and every mapping shares that copy (`allocated: false`, refcounted by address).
+  The most recently mapped file stays resident at zero mappings, since every reparse
+  unmaps the old AST before mapping the new one. Any other file's copy is freed at its
+  last `munmap`, or when another file becomes the recent one: switching `-std` keeps one
+  PCH in the heap, not five, unlinked or not. A writable file takes the stock copying
+  path. clang and wasm-ld map each file once per instance, so they link without it.
 - No clang-format binary. clangd formats (`textDocument/formatting`, range and
   on-type) with the same library and reads `.clang-format`.
 - ThinLTO (`LLVM_ENABLE_LTO=Thin`) on both builds. `Release` (-O2) blows the size

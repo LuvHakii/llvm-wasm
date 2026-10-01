@@ -17,7 +17,7 @@ const linker = [
 	"-pthread", "-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
 	"-s INITIAL_MEMORY=192MB", "-s ALLOW_MEMORY_GROWTH", "-s MAXIMUM_MEMORY=1GB", "-s STACK_SIZE=256kB",
 	"-s EXPORTED_RUNTIME_METHODS=FS,callMain", "-s MODULARIZE", "-s EXPORT_ES6",
-	"-s PTHREAD_POOL_SIZE=6",
+	"-s PTHREAD_POOL_SIZE=6", `--js-library ${REPO}/scripts/memfs-mmap.js`,
 	"-s EXPORTED_FUNCTIONS=_main,__emscripten_thread_crashed",
 	`-s INCOMING_MODULE_JS_API=${[...api, "mainScriptUrlOrBlob"]}`,
 	LTO_FLAGS,
