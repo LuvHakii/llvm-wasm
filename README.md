@@ -2,16 +2,23 @@
 
 ## Versions
 
-| component | version |
-|---|---|
-| LLVM | `llvmorg-23.1.2` |
-| Emscripten | 6.0.10 |
-| WASI SDK sysroot | 34 |
-| GCC (pb_ds headers) | 16.2.0 |
+| component | version | pinned by |
+|---|---|---|
+| LLVM | `llvmorg-23.1.2` | `llvm-project` submodule |
+| Emscripten | 6.0.10 | `emsdk` submodule (`aliases.latest` in its tags file) |
+| WASI SDK sysroot | 34 | `WASI_SDK_MAJOR` in `common.ts` |
+| GCC (pb_ds headers) | `releases/gcc-16.2.0` | `gcc` submodule, `update = none` |
+
+Bump a submodule: `git -C <sub> fetch --depth 1 origin <tag> && git -C <sub> checkout FETCH_HEAD && git add <sub>`.
+For gcc, which `setup.ts` checks out sparse, set the pointer directly:
+`git update-index --cacheinfo 160000,<sha>,gcc`.
 
 ## Layout
 
 ```
+llvm-project/        upstream source, shallow submodule
+emsdk/               Emscripten SDK, shallow submodule; setup.ts installs its pinned release into it
+gcc/                 gcc-mirror, update = none; setup.ts fetches only libstdc++-v3/include/ext/pb_ds
 scripts/             build pipeline (Bun TS): setup, clangd, clang multicall, PCHs + gate
 sysroot/             additions to include.tar / lib.tar: bits/stdc++.h, tty.patch, tty.c
 patches/             LLVM source patches
@@ -19,9 +26,7 @@ test/                clangd LSP gate in Chromium
 ```
 
 ```
-$ROOT                default ~/llvm-build, override for a bigger disk. never /tmp, tmpfs eats RAM
-$ROOT/llvm-project   shallow llvmorg-23.1.2 clone
-$ROOT/emsdk          pinned Emscripten SDK
+$ROOT                build output, default ~/llvm-build, override for a bigger disk. never /tmp, tmpfs eats RAM
 $ROOT/wasi-sysroot   WASI SDK 34 sysroot, pristine
 $ROOT/stage1         native llvm-tblgen, clang-tblgen, clang-tidy-confusable-chars-gen
 $ROOT/stage2         Emscripten cross build
@@ -32,7 +37,7 @@ $ROOT/lto.cache      ThinLTO link cache (3 GB cap), shared by both links
 ## Build
 
 ```bash
-bun scripts/setup.ts            # sources, emsdk, wasi-sysroot, native tblgen
+bun scripts/setup.ts            # submodules, gcc pb_ds, emsdk install, wasi-sysroot, native tblgen
 bun scripts/build-clangd.ts     # clangd
 bun scripts/build-clang.ts      # llvm multicall (clang, wasm-ld), include.tar, lib.tar
 bun scripts/gen-pch.ts ./dist   # five stdc++ PCHs + compile/link/run gate, no browser
@@ -196,7 +201,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 - clangd `PTHREAD_POOL_SIZE=6`. One open file peaks at 5 live threads (ASTWorker,
   PreambleWorker, preamble indexing, stdlib index, a request task). `-j` caps concurrent
   work, not threads. Past the pool, Emscripten loads a Worker on demand, the path that hangs.
-- ccache keys the compiler on the emscripten-releases commit for `EMSDK_VER`, not
+- ccache keys the compiler on the emscripten-releases commit for the pinned emsdk release, not
   mtime: every fresh emsdk install is new, so the default never hits in CI.
   `CCACHE_COMPILERTYPE=clang`, since it reads `em++` as "other".
   Those settings are right for `em++` only, so no host compiler may run under
@@ -208,7 +213,8 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   header", 4472 of 4511 in CI. The PCH itself is still hashed, so edits miss.
 - ThinLTO cache `prune_after=0s`. Pruning goes by atime and a hit never bumps it, so
   time expiry drops live entries. The 3 GB size cap is the only limit.
-- `setup.ts` checks out and cleans `llvm-project` before any patch. The CI cache
+- `setup.ts` force-checks-out and cleans `llvm-project` before any patch (`submodule update --force`, then `clean -fdq`; the update runs first, so `git -C` never lands in this repo).
+  gcc is `update = none`: a plain `submodule update --init`, as `actions/checkout` runs, skips it, because a full checkout pulls the whole gcc tree. The CI cache
   saves the tree already patched and never re-saves on a key hit, so without the
   reset an edited or removed patch stays as first cached. `patch()` fails on a hunk
   applied at an offset: `git apply` exits 0 and says so only under `-v`.

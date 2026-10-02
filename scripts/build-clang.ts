@@ -2,8 +2,8 @@ import {$} from "bun";
 import {cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync} from "node:fs";
 import {basename} from "node:path";
 import {
-	BUILD, COMMON_CMAKE, GCC_VER, JOBS, LLVM_VER, LTO_FLAGS, REPO, ROOT, SRC, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER,
-	emenv, extractTar, patch,
+	BUILD, COMMON_CMAKE, EMSDK, GCC, JOBS, LTO_FLAGS, REPO, ROOT, SRC, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER,
+	emenv, extractTar, llvmVer, patch,
 } from "./common.ts";
 
 const env = await emenv();
@@ -43,7 +43,7 @@ mkdirSync(LIB, {recursive: true});
 for (const [, body] of readFileSync(`${SRC}/clang/lib/Headers/CMakeLists.txt`, "utf8").matchAll(/^set\((?:core|webassembly)_files([^)]*)\)/gm)) {
 	for (const line of body.split("\n").slice(1)) {
 		const h = line.trim().split(/\s+/)[0];
-		if (h) cpSync(`${BUILD}/lib/clang/${LLVM_VER.split(".")[0]}/include/${h}`, `${SLIM}/include/${h}`);
+		if (h) cpSync(`${BUILD}/lib/clang/${llvmVer().split(".")[0]}/include/${h}`, `${SLIM}/include/${h}`);
 	}
 }
 
@@ -55,11 +55,6 @@ await $`patch -p1 -d ${SLIM} < ${REPO}/sysroot/sigaction.patch`;
 const CXX = `${SLIM}/include/c++/v1`;
 cpSync(`${REPO}/sysroot/bits-stdc++.h`, `${CXX}/bits/stdc++.h`);
 
-const GCC = `${ROOT}/gcc-${GCC_VER}`;
-if (!existsSync(GCC)) {
-	await $`git clone --depth 1 --branch releases/gcc-${GCC_VER} --filter=blob:none --sparse https://github.com/gcc-mirror/gcc.git ${GCC}`;
-	await $`git -C ${GCC} sparse-checkout set libstdc++-v3/include/ext/pb_ds`;
-}
 for (const f of ["pb_ds", "typelist.h"]) cpSync(`${GCC}/libstdc++-v3/include/ext/${f}`, `${CXX}/ext/${f}`, {recursive: true});
 for (const h of ["bits/c++config.h", "debug/debug.h", "tr1/type_traits", "tr1/functional", "ext/type_traits.h", "ext/numeric_traits.h"]) {
 	cpSync(`${REPO}/sysroot/libstdcxx-shim.h`, `${CXX}/${h}`);
@@ -70,7 +65,7 @@ for (const pattern of ["*.{a,o}", "eh/*.a"]) {
 	for (const f of new Bun.Glob(pattern).scanSync(libs)) cpSync(`${libs}/${f}`, `${LIB}/${basename(f)}`);
 }
 
-const emclang = `${ROOT}/emsdk/upstream/bin`;
+const emclang = `${EMSDK}/upstream/bin`;
 await $`${emclang}/clang --target=wasm32-wasip1 --sysroot=${SLIM} -O2 -c ${REPO}/sysroot/tty.c -o ${ROOT}/tty.o`;
 await $`${emclang}/llvm-ar rcs ${LIB}/libtty.a ${ROOT}/tty.o`;
 

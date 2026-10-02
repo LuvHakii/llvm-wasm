@@ -1,18 +1,18 @@
 import {$} from "bun";
+import {readFileSync} from "node:fs";
 import {homedir} from "node:os";
 import {resolve} from "node:path";
 
-export const LLVM_VER = "23.1.2";
-export const EMSDK_VER = "6.0.10";
 export const WASI_SDK_MAJOR = "34";
 export const WASI_SDK_VER = `${WASI_SDK_MAJOR}.0`;
-export const GCC_VER = "16.2.0";
 
 export const ROOT = process.env.ROOT ?? `${homedir()}/llvm-build`;
 export const JOBS = process.env.JOBS ?? "8";
 export const REPO = resolve(import.meta.dir, "..");
 
-export const SRC = `${ROOT}/llvm-project`;
+export const SRC = `${REPO}/llvm-project`;
+export const EMSDK = `${REPO}/emsdk`;
+export const GCC = `${REPO}/gcc`;
 export const SYSROOT = `${ROOT}/wasi-sysroot`;
 export const NATIVE = `${ROOT}/stage1`;
 export const BUILD = `${ROOT}/stage2`;
@@ -45,17 +45,25 @@ export const COMMON_CMAKE = [
 	...(Bun.which("ccache") ? ["-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"] : []),
 ];
 
+export function llvmVer() {
+	const s = readFileSync(`${SRC}/cmake/Modules/LLVMVersion.cmake`, "utf8");
+	return ["MAJOR", "MINOR", "PATCH"].map(k => s.match(new RegExp(`set\\(LLVM_VERSION_${k} (\\d+)\\)`))![1]).join(".");
+}
+
+export function emsdkVer(): string {
+	return JSON.parse(readFileSync(`${EMSDK}/emscripten-releases-tags.json`, "utf8")).aliases.latest;
+}
+
 export async function emenv() {
-	const raw = await $`bash -c 'source ${ROOT}/emsdk/emsdk_env.sh >/dev/null 2>&1; env -0'`.text();
+	const raw = await $`bash -c 'source ${EMSDK}/emsdk_env.sh >/dev/null 2>&1; env -0'`.text();
 	const env: Record<string, string> = {};
 	for (const line of raw.split("\0")) {
 		const i = line.indexOf("=");
 		if (i > 0) env[line.slice(0, i)] = line.slice(i + 1);
 	}
 	env.PATH = `${REPO}/node_modules/.bin:${env.PATH}`;
-	const tags = await Bun.file(`${ROOT}/emsdk/emscripten-releases-tags.json`).json();
-	const rel = tags.releases[EMSDK_VER];
-	if (!rel) throw new Error(`no emscripten-releases commit for ${EMSDK_VER}`);
+	const tags = await Bun.file(`${EMSDK}/emscripten-releases-tags.json`).json();
+	const rel = tags.releases[tags.aliases.latest];
 	env.CCACHE_COMPILERCHECK = `string:emscripten-releases-${rel}`;
 	env.CCACHE_COMPILERTYPE = "clang";
 	env.CCACHE_SLOPPINESS = "pch_defines,time_macros";
@@ -80,5 +88,5 @@ export async function patch(file: string) {
 }
 
 if (import.meta.main) {
-	for (const [k, v] of Object.entries({LLVM_VER, EMSDK_VER, WASI_SDK_VER})) console.log(`${k}=${v}`);
+	for (const [k, v] of Object.entries({LLVM_VER: llvmVer(), EMSDK_VER: emsdkVer(), WASI_SDK_VER})) console.log(`${k}=${v}`);
 }

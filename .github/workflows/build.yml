@@ -32,18 +32,19 @@ jobs:
           df -h /
 
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - uses: oven-sh/setup-bun@v2
 
       - name: versions
         run: bun scripts/common.ts >> "$GITHUB_ENV"
 
-      - name: cache sources + emsdk + stage1
+      - name: cache emsdk + stage1
         uses: actions/cache@v4
         with:
           path: |
-            /home/runner/llvm-build/llvm-project
-            /home/runner/llvm-build/emsdk
+            emsdk
             /home/runner/llvm-build/stage1
           key: ${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ env.WASI_SDK_VER }}-${{ hashFiles('scripts/setup.ts') }}
 

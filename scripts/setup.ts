@@ -1,23 +1,24 @@
 import {$} from "bun";
 import {existsSync, mkdirSync, renameSync} from "node:fs";
-import {EMSDK_VER, extractTar, JOBS, LLVM_VER, NATIVE, ROOT, SRC, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER} from "./common.ts";
+import {EMSDK, emsdkVer, extractTar, GCC, JOBS, NATIVE, REPO, ROOT, SRC, SYSROOT, WASI_SDK_MAJOR, WASI_SDK_VER} from "./common.ts";
 
 mkdirSync(ROOT, {recursive: true});
 
-if (!existsSync(SRC)) {
-	console.log(`clone llvm-project llvmorg-${LLVM_VER}`);
-	await $`git clone --depth 1 --branch llvmorg-${LLVM_VER} --single-branch https://github.com/llvm/llvm-project.git ${SRC}`;
-}
-await $`git -C ${SRC} checkout -- .`;
+await $`git -C ${REPO} submodule update --init --depth 1 emsdk`;
+await $`git -C ${REPO} submodule update --init --depth 1 --force llvm-project`;
 await $`git -C ${SRC} clean -fdq`;
 
-const emsdk = `${ROOT}/emsdk`;
-if (!existsSync(emsdk)) {
-	console.log(`install emsdk ${EMSDK_VER}`);
-	await $`git clone --depth 1 https://github.com/emscripten-core/emsdk.git ${emsdk}`;
-	await $`${emsdk}/emsdk install ${EMSDK_VER}`;
-	await $`${emsdk}/emsdk activate ${EMSDK_VER}`;
+const gcc = (await $`git -C ${REPO} rev-parse :gcc`.text()).trim();
+await $`git init -q ${GCC}`;
+if ((await $`git -C ${GCC} rev-parse -q --verify HEAD`.nothrow().text()).trim() !== gcc) {
+	console.log(`fetch gcc ${gcc}, pb_ds headers only`);
+	await $`git -C ${GCC} sparse-checkout set libstdc++-v3/include/ext/pb_ds`;
+	await $`git -C ${GCC} fetch -q --depth 1 --filter=blob:none https://github.com/gcc-mirror/gcc.git ${gcc}`;
+	await $`git -C ${GCC} checkout -q FETCH_HEAD`;
 }
+
+await $`${EMSDK}/emsdk install ${emsdkVer()}`;
+await $`${EMSDK}/emsdk activate ${emsdkVer()}`;
 
 if (!existsSync(SYSROOT)) {
 	console.log(`fetch wasi-sysroot ${WASI_SDK_VER}`);

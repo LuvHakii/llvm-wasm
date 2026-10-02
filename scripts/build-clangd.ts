@@ -1,6 +1,6 @@
 import {$} from "bun";
 import {cpSync, mkdirSync} from "node:fs";
-import {BUILD, COMMON_CMAKE, JOBS, LTO_FLAGS, REPO, ROOT, emenv, patch} from "./common.ts";
+import {BUILD, COMMON_CMAKE, EMSDK, JOBS, LTO_FLAGS, REPO, emenv, patch} from "./common.ts";
 
 const env = await emenv();
 
@@ -12,7 +12,7 @@ await patch("clang-driver-wasm-only.patch");
 await patch("clangd-no-modules.patch");
 await patch("clangd-no-banner.patch");
 
-const api = new Function(`${await Bun.file(`${ROOT}/emsdk/upstream/emscripten/src/settings.js`).text()}; return INCOMING_MODULE_JS_API`)();
+const api = new Function(`${await Bun.file(`${EMSDK}/upstream/emscripten/src/settings.js`).text()}; return INCOMING_MODULE_JS_API`)();
 
 const linker = [
 	"-pthread", "-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",
