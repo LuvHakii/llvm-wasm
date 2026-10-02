@@ -8,6 +8,8 @@ if (!existsSync(SRC)) {
 	console.log(`clone llvm-project llvmorg-${LLVM_VER}`);
 	await $`git clone --depth 1 --branch llvmorg-${LLVM_VER} --single-branch https://github.com/llvm/llvm-project.git ${SRC}`;
 }
+await $`git -C ${SRC} checkout -- .`;
+await $`git -C ${SRC} clean -fdq`;
 
 const emsdk = `${ROOT}/emsdk`;
 if (!existsSync(emsdk)) {
