@@ -1,8 +1,8 @@
 diff --git a/clang-tools-extra/clangd/tool/ClangdMain.cpp b/clang-tools-extra/clangd/tool/ClangdMain.cpp
-index 13fe4d3..488069d 100644
+index 13fe4d3..29b8ec6 100644
 --- a/clang-tools-extra/clangd/tool/ClangdMain.cpp
 +++ b/clang-tools-extra/clangd/tool/ClangdMain.cpp
-@@ -886,12 +886,6 @@ clangd accepts flags on the commandline, and in the CLANGD_FLAGS environment var
+@@ -886,52 +886,11 @@ clangd accepts flags on the commandline, and in the CLANGD_FLAGS environment var
    if (Tracer)
      TracingSession.emplace(*Tracer);
  
@@ -15,3 +15,43 @@ index 13fe4d3..488069d 100644
    // Use buffered stream to stderr (we still flush each log message). Unbuffered
    // stream can cause significant (non-deterministic) latency for the logger.
    llvm::errs().SetBuffered();
+   StreamLogger Logger(llvm::errs(), LogLevel);
+   LoggingSession LoggingSession(Logger);
+-  // Write some initial logs before we start doing any real work.
+-  log("{0}", versionString());
+-  log("Features: {0}", featureString());
+-  log("PID: {0}", llvm::sys::Process::getProcessId());
+-  {
+-    SmallString<128> CWD;
+-    if (auto Err = llvm::sys::fs::current_path(CWD))
+-      log("Working directory unknown: {0}", Err.message());
+-    else
+-      log("Working directory: {0}", CWD);
+-  }
+-  for (int I = 0; I < argc; ++I)
+-    log("argv[{0}]: {1}", I, argv[I]);
+-  if (auto EnvFlags = llvm::sys::Process::GetEnv(FlagsEnvVar))
+-    log("{0}: {1}", FlagsEnvVar, *EnvFlags);
+-  // Log environment variables that influence how clangd finds system headers.
+-  // This helps diagnose missing-include issues, especially on Windows.
+-  for (const char *EnvVar : {
+-           // MSVC environment variables (set by vcvarsall.bat)
+-           "INCLUDE",
+-           "LIB",
+-           "LIBPATH",
+-           "CL",
+-           "_CL_",
+-           // GCC/Clang environment variables
+-           "CPATH",
+-           "C_INCLUDE_PATH",
+-           "CPLUS_INCLUDE_PATH",
+-           "OBJC_INCLUDE_PATH",
+-           "LIBRARY_PATH",
+-           "GCC_EXEC_PREFIX",
+-       }) {
+-    if (auto Val = llvm::sys::Process::GetEnv(EnvVar))
+-      log("Env {0}: {1}", EnvVar, *Val);
+-  }
+ 
+   ClangdLSPServer::Options Opts;
+   Opts.UseDirBasedCDB = (CompileArgsFrom == FilesystemCompileArgs);

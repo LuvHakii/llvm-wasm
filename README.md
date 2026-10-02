@@ -113,8 +113,10 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   OpenMP) a fatal error and turns off `-fmodules-driver`. A non-wasm `--target`
   silently gets WebAssembly's paths. `clangd-no-modules.patch` drops clangd's C++20
   module scanning: one file, nothing to import, no `std.cppm` in the sysroot.
-- `patches/clangd-no-banner.patch` drops the usage text clangd prints to stderr when
-  stdout and stderr both look like a terminal. The info-level startup logs stay: `--log=error` already hides them.
+- `patches/clangd-no-banner.patch` drops clangd's whole startup banner: the usage text
+  it prints to stderr when stdout and stderr both look like a terminal, and the
+  startup logs (version, features, PID, working directory, argv, `CLANGD_FLAGS`,
+  include-path env vars).
 - `patches/clang-trim.patch`, both binaries: the experimental constant interpreter
   (`-fexperimental-new-constant-interpreter`, off by default, ~1.4 MB each) becomes a
   fatal error, and target builtin codegen handles WebAssembly only (0.49 MB, every
