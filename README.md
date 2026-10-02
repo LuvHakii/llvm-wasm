@@ -208,6 +208,10 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   header", 4472 of 4511 in CI. The PCH itself is still hashed, so edits miss.
 - ThinLTO cache `prune_after=0s`. Pruning goes by atime and a hit never bumps it, so
   time expiry drops live entries. The 3 GB size cap is the only limit.
+- `setup.ts` checks out and cleans `llvm-project` before any patch. The CI cache
+  saves the tree already patched and never re-saves on a key hit, so without the
+  reset an edited or removed patch stays as first cached. `patch()` fails on a hunk
+  applied at an offset: `git apply` exits 0 and says so only under `-v`.
 - `JOBS` is 8, not nproc, and `LLVM_PARALLEL_LINK_JOBS=1`. Link steps eat
   memory, dev box has ~10 GB free.
 - Compiled programs get `std::thread` that links and then traps at runtime, and
