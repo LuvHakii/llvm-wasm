@@ -74,7 +74,8 @@ export async function patch(file: string) {
 	const p = `${REPO}/patches/${file}`;
 	const applied = await $`git -C ${SRC} apply --reverse --check ${p}`.quiet().nothrow();
 	if (applied.exitCode === 0) return;
-	await $`git -C ${SRC} apply ${p}`;
+	const r = await $`git -C ${SRC} apply -v ${p}`.quiet().nothrow();
+	if (r.exitCode !== 0 || r.stderr.includes("offset")) throw new Error(`patch ${file}\n${r.stderr}`);
 	console.log(`patch ${file}`);
 }
 
