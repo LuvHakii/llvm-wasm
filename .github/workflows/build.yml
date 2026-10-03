@@ -49,20 +49,18 @@ jobs:
           key: ${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ env.WASI_SDK_VER }}-${{ hashFiles('scripts/setup.ts') }}
 
       - name: ccache
-        run: sudo apt-get install -y --no-install-recommends ccache
+        uses: hendrikmuhs/ccache-action@v1.2.24
+        with:
+          key: llvm-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}
+          max-size: 4G
 
-      - name: restore ccache + ThinLTO cache
-        id: ccache
+      - name: restore ThinLTO cache
+        id: lto
         uses: actions/cache/restore@v4
         with:
-          path: |
-            ~/.cache/ccache
-            /home/runner/llvm-build/lto.cache
-          key: ccache-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ github.sha }}
-          restore-keys: ccache-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-
-
-      - name: zero ccache stats
-        run: ccache -z
+          path: /home/runner/llvm-build/lto.cache
+          key: lto-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ github.sha }}
+          restore-keys: lto-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-
 
       - name: install deps
         run: |
@@ -81,18 +79,12 @@ jobs:
       - name: build llvm multicall
         run: bun scripts/build-clang.ts
 
-      - name: save ccache + ThinLTO cache
-        if: always() && steps.ccache.outputs.cache-hit != 'true'
+      - name: save ThinLTO cache
+        if: always() && steps.lto.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          path: |
-            ~/.cache/ccache
-            /home/runner/llvm-build/lto.cache
-          key: ccache-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ github.sha }}
-
-      - name: cache stats
-        if: always()
-        run: ccache -s -v; du -sh ~/.cache/ccache /home/runner/llvm-build/lto.cache
+          path: /home/runner/llvm-build/lto.cache
+          key: lto-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ github.sha }}
 
       - name: "PCHs, gate: compile + link + run, tty"
         run: |
