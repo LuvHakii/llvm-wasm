@@ -1,0 +1,37 @@
+id: no-modules-driver
+language: cpp
+files: [clang/lib/Driver/Driver.cpp]
+metadata: { expect: 1 }
+rule:
+  pattern: bool UseModulesDriver = $E;
+  inside: { stopBy: end, kind: function_definition, has: { field: declarator, regex: '\bDriver::BuildCompilation\(' } }
+fix: bool UseModulesDriver = false;
+---
+id: no-offload-toolchain
+language: cpp
+files: [clang/lib/Driver/Driver.cpp]
+metadata: { expect: 1 }
+# first statement of the body
+rule:
+  kind: declaration
+  pattern: $S
+  nthChild: 1
+  inside:
+    kind: compound_statement
+    inside: { field: body, kind: function_definition, has: { field: declarator, regex: '\bDriver::getOffloadToolChain\(' } }
+fix: |-
+  llvm::report_fatal_error("llvm-wasm: offloading is not supported");
+  $S
+---
+id: wasm-only-toolchain
+language: cpp
+files: [clang/lib/Driver/Driver.cpp]
+metadata: { expect: 1 }
+rule:
+  pattern: auto &TC = ToolChains[Target.str()];
+  inside: { stopBy: end, kind: function_definition, has: { field: declarator, regex: '\bDriver::getToolChain\(' } }
+fix: |-
+  auto &TC = ToolChains[Target.str()];
+  if (!TC)
+    TC = std::make_unique<toolchains::WebAssembly>(*this, Target, Args);
+  return *TC;

@@ -1,0 +1,3 @@
+# ast-grep reads .h as C by default; LLVM headers are C++
+languageGlobs:
+  cpp: ["*.h"]

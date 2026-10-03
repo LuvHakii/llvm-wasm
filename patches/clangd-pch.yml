@@ -1,0 +1,6 @@
+id: keep-implicit-pch
+language: cpp
+files: [clang-tools-extra/clangd/Compiler.cpp]
+metadata: { expect: 1 }
+rule: { pattern: CI.getPreprocessorOpts().ImplicitPCHInclude.clear(); }
+fix: ''

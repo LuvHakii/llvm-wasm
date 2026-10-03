@@ -1,0 +1,84 @@
+id: banner-usage-comments
+language: cpp
+files: [clang-tools-extra/clangd/tool/ClangdMain.cpp]
+metadata: { expect: 3 }
+rule:
+  kind: comment
+  regex: 'If a user ran `clangd` in a terminal|confused about how to use clangd|Show them the help overview'
+fix: ''
+---
+id: banner-usage
+language: cpp
+files: [clang-tools-extra/clangd/tool/ClangdMain.cpp]
+metadata: { expect: 1 }
+rule:
+  kind: if_statement
+  has: { field: condition, stopBy: end, kind: field_identifier, regex: ^is_displayed$ }
+fix: ''
+---
+id: banner-log-comments
+language: cpp
+files: [clang-tools-extra/clangd/tool/ClangdMain.cpp]
+metadata: { expect: 3 }
+rule:
+  kind: comment
+  regex: 'Write some initial logs|Log environment variables that influence|This helps diagnose missing-include'
+fix: ''
+---
+id: banner-log-version
+language: cpp
+files: [clang-tools-extra/clangd/tool/ClangdMain.cpp]
+metadata: { expect: 1 }
+rule: { pattern: 'log("{0}", versionString());' }
+fix: ''
+---
+id: banner-log-features
+language: cpp
+files: [clang-tools-extra/clangd/tool/ClangdMain.cpp]
+metadata: { expect: 1 }
+rule: { pattern: 'log("Features: {0}", featureString());' }
+fix: ''
+---
+id: banner-log-pid
+language: cpp
+files: [clang-tools-extra/clangd/tool/ClangdMain.cpp]
+metadata: { expect: 1 }
+rule: { pattern: 'log("PID: {0}", llvm::sys::Process::getProcessId());' }
+fix: ''
+---
+id: banner-log-cwd
+language: cpp
+files: [clang-tools-extra/clangd/tool/ClangdMain.cpp]
+metadata: { expect: 1 }
+rule:
+  kind: compound_statement
+  inside: { kind: compound_statement }
+  has: { stopBy: end, pattern: 'log("Working directory: {0}", CWD);' }
+fix: ''
+---
+id: banner-log-argv
+language: cpp
+files: [clang-tools-extra/clangd/tool/ClangdMain.cpp]
+metadata: { expect: 1 }
+rule:
+  kind: for_statement
+  has: { pattern: 'log("argv[{0}]: {1}", I, argv[I]);' }
+fix: ''
+---
+id: banner-log-flags-env
+language: cpp
+files: [clang-tools-extra/clangd/tool/ClangdMain.cpp]
+metadata: { expect: 1 }
+rule:
+  kind: if_statement
+  has: { pattern: 'log("{0}: {1}", FlagsEnvVar, *EnvFlags);' }
+fix: ''
+---
+id: banner-log-include-env
+language: cpp
+files: [clang-tools-extra/clangd/tool/ClangdMain.cpp]
+metadata: { expect: 1 }
+rule:
+  kind: for_range_loop
+  has: { stopBy: end, pattern: 'log("Env {0}: {1}", EnvVar, *Val);' }
+fix: ''

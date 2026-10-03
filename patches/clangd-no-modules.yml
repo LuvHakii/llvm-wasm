@@ -1,0 +1,18 @@
+id: no-modules-manager
+language: cpp
+files: [clang-tools-extra/clangd/ClangdLSPServer.cpp]
+metadata: { expect: 1 }
+rule:
+  kind: if_statement
+  has: { field: condition, regex: '^\(Opts\.EnableExperimentalModulesSupport\)$' }
+  inside: { stopBy: end, kind: function_definition, has: { field: declarator, regex: '\bClangdLSPServer::onInitialize\(' } }
+fix: ''
+---
+id: no-project-modules
+language: cpp
+files: [clang-tools-extra/clangd/GlobalCompilationDatabase.cpp]
+metadata: { expect: 1 }
+rule:
+  pattern: return clang::clangd::getProjectModules($$$);
+  inside: { stopBy: end, kind: function_definition, has: { field: declarator, regex: '\bDirectoryBasedGlobalCompilationDatabase::getProjectModules\(' } }
+fix: return nullptr;

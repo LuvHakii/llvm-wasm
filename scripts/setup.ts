@@ -7,6 +7,9 @@ mkdirSync(ROOT, {recursive: true});
 await $`git -C ${REPO} submodule update --init --depth 1 emsdk`;
 await $`git -C ${REPO} submodule update --init --depth 1 --force llvm-project`;
 await $`git -C ${SRC} clean -fdq`;
+// every C++ edit, for both builds: each touches files only one of them compiles, or both (clang-trim, driver)
+const rules = [...new Bun.Glob("patches/*.yml").scanSync(REPO)].sort().map(f => `${REPO}/${f}`);
+await $`${REPO}/scripts/apply-rules.sh ${SRC} ${rules}`;
 
 const gcc = (await $`git -C ${REPO} rev-parse :gcc`.text()).trim();
 await $`git init -q ${GCC}`;

@@ -8,9 +8,7 @@ import {
 
 const env = await emenv();
 
-await patch("lld-wasm-only.patch");
-await patch("clang-trim.patch");
-await patch("clang-driver-wasm-only.patch");
+await patch("lld-wasm-only.patch"); // CMake, no ast-grep grammar; the C++ edits are patches/*.yml, applied by setup.ts
 
 const linker = [
 	"-s ENVIRONMENT=worker", "-s NO_INVOKE_RUN", "-s EXIT_RUNTIME",

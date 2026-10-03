@@ -1,0 +1,27 @@
+id: no-interp-context
+language: cpp
+files: [clang/lib/AST/ASTContext.cpp]
+metadata: { expect: 1 }
+rule:
+  kind: compound_statement
+  inside: { field: body, kind: function_definition, has: { field: declarator, regex: '\bASTContext::getInterpContext\(' } }
+fix: |-
+  {
+    llvm::report_fatal_error("the experimental constant interpreter is not built in");
+  }
+---
+id: wasm-only-builtins
+language: cpp
+files: [clang/lib/CodeGen/CGBuiltin.cpp]
+metadata: { expect: 1 }
+# first node of the body (a comment upstream)
+rule:
+  kind: comment
+  pattern: $F
+  nthChild: 1
+  inside:
+    kind: compound_statement
+    inside: { field: body, kind: function_definition, has: { field: declarator, regex: '\bEmitTargetArchBuiltinExpr\(' } }
+fix: |-
+  return CGF->EmitWebAssemblyBuiltinExpr(BuiltinID, E);
+  $F

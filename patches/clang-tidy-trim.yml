@@ -1,0 +1,23 @@
+id: tidy-drop-anchors
+language: cpp
+files: [clang-tools-extra/clang-tidy/ClangTidyForceLinker.h]
+metadata: { expect: 39 }
+# 13 dropped modules x (comment, extern Source, static Destination)
+rule:
+  any:
+    - kind: comment
+      regex: 'link the (Abseil|Altera|Android|Boost|Darwin|Fuchsia|Google|LinuxKernel|LLVM|LLVMLibc|ObjC|OpenMP|Zircon)Module\.$'
+    - kind: declaration
+      has:
+        field: declarator
+        regex: '^(Abseil|Altera|Android|Boost|Darwin|Fuchsia|Google|LinuxKernel|LLVM|LLVMLibc|ObjC|OpenMP|Zircon)ModuleAnchor(Source$|Destination\b)'
+fix: ''
+---
+id: tidy-drop-checks
+language: cpp
+files: [clang-tools-extra/clang-tidy/bugprone/BugproneTidyModule.cpp, clang-tools-extra/clang-tidy/cppcoreguidelines/CppCoreGuidelinesTidyModule.cpp, clang-tools-extra/clang-tidy/misc/MiscTidyModule.cpp, clang-tools-extra/clang-tidy/modernize/ModernizeTidyModule.cpp]
+metadata: { expect: 5 }
+rule: { pattern: CheckFactories.registerCheck<$T>($N); }
+constraints:
+  N: { regex: '^"(bugprone-unchecked-optional-access|bugprone-use-after-move|cppcoreguidelines-macro-to-enum|misc-include-cleaner|modernize-macro-to-enum)"$' }
+fix: ''

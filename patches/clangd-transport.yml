@@ -1,0 +1,53 @@
+id: transport-js-hooks
+language: cpp
+files: [clang-tools-extra/clangd/JSONTransport.cpp]
+metadata: { expect: 1 }
+rule: { kind: preproc_include, regex: '^#include <system_error>' }
+# the include node ends with its newline, so the fix keeps one (|)
+fix: |
+  #include <system_error>
+  #include <emscripten.h>
+
+  EM_ASYNC_JS(int, nextMessageLength, (), {
+    Module.pending = await Module.nextMessage();
+    return lengthBytesUTF8(Module.pending);
+  })
+  EM_JS(void, copyMessage, (char *p, int n), { stringToUTF8(Module.pending, p, n + 1); })
+---
+id: transport-send
+language: cpp
+files: [clang-tools-extra/clangd/JSONTransport.cpp]
+metadata: { expect: 1 }
+rule:
+  kind: expression_statement
+  regex: '^Out << "Content-Length: "'
+  pattern: $S
+  inside: { stopBy: end, kind: function_definition, has: { field: declarator, regex: '^sendMessage\(' } }
+# EM_ASM's $0/$1 would parse as metavariables in the fix; build them with a transform
+transform:
+  D0: { replace: { source: $S, replace: '(?s).*', by: '$$0' } }
+  D1: { replace: { source: $S, replace: '(?s).*', by: '$$1' } }
+fix: |-
+  MAIN_THREAD_EM_ASM({ Module.onMessage(UTF8ToString($D0, $D1)); },
+                     OutputBuffer.data(), OutputBuffer.size());
+---
+id: transport-no-flush
+language: cpp
+files: [clang-tools-extra/clangd/JSONTransport.cpp]
+metadata: { expect: 1 }
+rule:
+  pattern: Out.flush();
+  inside: { stopBy: end, kind: function_definition, has: { field: declarator, regex: '^sendMessage\(' } }
+fix: ''
+---
+id: transport-read
+language: cpp
+files: [clang-tools-extra/clangd/JSONTransport.cpp]
+metadata: { expect: 1 }
+rule:
+  kind: return_statement
+  inside: { stopBy: end, kind: function_definition, has: { field: declarator, regex: '^readRawMessage\(' } }
+fix: |-
+  JSON.resize(nextMessageLength());
+  copyMessage(JSON.data(), JSON.size());
+  return true;

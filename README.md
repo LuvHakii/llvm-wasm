@@ -21,7 +21,7 @@ emsdk/               Emscripten SDK, shallow submodule; setup.ts installs its pi
 gcc/                 gcc-mirror, update = none; setup.ts fetches only libstdc++-v3/include/ext/pb_ds
 scripts/             build pipeline (Bun TS): setup, clangd, clang multicall, PCHs + gate
 sysroot/             additions to include.tar / lib.tar: bits/stdc++.h, tty.patch, tty.c
-patches/             LLVM source patches
+patches/             LLVM edits: ast-grep rules (*.yml, each with an expected match count), lld CMake .patch
 test/                clangd LSP gate in Chromium
 ```
 
@@ -37,7 +37,7 @@ $ROOT/lto.cache      ThinLTO link cache (3 GB cap), shared by both links
 ## Build
 
 ```bash
-bun scripts/setup.ts            # submodules, gcc pb_ds, emsdk install, wasi-sysroot, native tblgen
+bun scripts/setup.ts            # submodules, patches/*.yml, gcc pb_ds, emsdk install, wasi-sysroot, native tblgen
 bun scripts/build-clangd.ts     # clangd
 bun scripts/build-clang.ts      # llvm multicall (clang, wasm-ld), include.tar, lib.tar
 bun scripts/gen-pch.ts ./dist   # five stdc++ PCHs + compile/link/run gate, no browser
@@ -93,7 +93,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   gzip 2.2x, landing at 14.7 MiB, under the cap. clang-tidy checks are linked
   (`CLANGD_TIDY_CHECKS` default ON: `clangd-jspi` 28.2 to 33.6 MB raw, 6.6 to 7.5 MB brotli); none run until `.clangd` adds them. `clang-analyzer-*` and query-based
   custom checks are off: they link the whole static analyzer and clang-query.
-  `patches/clang-tidy-trim.patch` keeps bugprone, cert, concurrency, cppcoreguidelines,
+  `patches/clang-tidy-trim.yml` keeps bugprone, cert, concurrency, cppcoreguidelines,
   misc, modernize, performance, portability and readability, and drops the checks clangd
   refuses to run anyway (`TidyProvider.cpp` disable list), which alone pulled in clang's
   dataflow framework.
@@ -103,7 +103,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   flat in `lib/wasm32-wasip1`. clang only adds the libc++ paths once it finds a
   `v1` under the generic `include/c++/`, so libc++ must live there, not per target.
 - clangd talks LSP as whole JSON strings, no `Content-Length` framing, no stdin
-  (`patches/clangd-transport.patch`): it awaits `Module.nextMessage()` for each
+  (`patches/clangd-transport.yml`): it awaits `Module.nextMessage()` for each
   incoming message and calls `Module.onMessage(json)` for each outgoing one. From
   worker threads that call is proxied to the main thread synchronously.
 - clangd needs a real browser, the compiler does not. Node has no `Worker`, so
@@ -112,21 +112,21 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   one process, since neither has a pthread pool. clangd's 16-worker pool never
   comes up: bun drops the `Worker` `name` option, and patching that only moves
   the hang. So Chromium via Playwright, `dist/` under COOP/COEP.
-- `patches/clang-driver-wasm-only.patch`: clang's driver builds every OS and
-  offload toolchain from the triple at runtime, so LTO keeps all 68. The patch
+- `patches/clang-driver-wasm-only.yml`: clang's driver builds every OS and
+  offload toolchain from the triple at runtime, so LTO keeps all 68. The rules
   always returns the WebAssembly toolchain, makes offloading (CUDA, HIP, SYCL,
   OpenMP) a fatal error and turns off `-fmodules-driver`. A non-wasm `--target`
-  silently gets WebAssembly's paths. `clangd-no-modules.patch` drops clangd's C++20
+  silently gets WebAssembly's paths. `clangd-no-modules.yml` drops clangd's C++20
   module scanning: one file, nothing to import, no `std.cppm` in the sysroot.
-- `patches/clangd-no-banner.patch` drops clangd's whole startup banner: the usage text
+- `patches/clangd-no-banner.yml` drops clangd's whole startup banner: the usage text
   it prints to stderr when stdout and stderr both look like a terminal, and the
   startup logs (version, features, PID, working directory, argv, `CLANGD_FLAGS`,
   include-path env vars).
-- `patches/clang-trim.patch`, both binaries: the experimental constant interpreter
+- `patches/clang-trim.yml`, both binaries: the experimental constant interpreter
   (`-fexperimental-new-constant-interpreter`, off by default, ~1.4 MB each) becomes a
   fatal error, and target builtin codegen handles WebAssembly only (0.49 MB, every
   arch's `Emit*BuiltinExpr` inlined into one function).
-- `patches/lld-wasm-only.patch`: lld links its ELF, COFF, MachO and MinGW drivers
+- `patches/lld-wasm-only.yml` + `.patch` (CMake link list): lld links its ELF, COFF, MachO and MinGW drivers
   and picks one by `argv[0]` at runtime, so LTO keeps all of them. Only `wasm-ld`
   runs here.
 - `wasm-ld --threads=1`. lld is linked `-pthread` with no `PTHREAD_POOL_SIZE`,
@@ -150,7 +150,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   `gen-pch.ts` compiles, links and runs a probe with each one before writing it.
 - clangd drops `-include-pch` upstream (`Compiler.cpp` clears `ImplicitPCHInclude`),
   so every file open re-parsed libc++: 26.5 MB preamble, 4-8 s.
-  `patches/clangd-pch.patch` keeps it; the preamble chains onto the PCH: 54 KB,
+  `patches/clangd-pch.yml` keeps it; the preamble chains onto the PCH: 54 KB,
   under 1 s. Its flags must match the PCH's, same rule as clang.
 - clang and lld never share a page or worker. Both at once crashed Chromium at
   any `INITIAL_MEMORY`. One multicall binary now, `gen-pch.ts` still gives
@@ -213,10 +213,15 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   header", 4472 of 4511 in CI. The PCH itself is still hashed, so edits miss.
 - ThinLTO cache `prune_after=0s`. Pruning goes by atime and a hit never bumps it, so
   time expiry drops live entries. The 3 GB size cap is the only limit.
-- `setup.ts` force-checks-out and cleans `llvm-project` before any patch (`submodule update --force`, then `clean -fdq`; the update runs first, so `git -C` never lands in this repo).
+- `setup.ts` force-checks-out and cleans `llvm-project` before any patch (`submodule update --force`, then `clean -fdq`; the update runs first, so `git -C` never lands in this repo),
+  then applies `patches/*.yml` with `scripts/apply-rules.sh` (ast-grep 0.45.3 via npx, plus jq). The rules insert
+  without guards, so they only apply to a reset tree. Each rule must match exactly its `metadata: { expect: N }`,
+  else setup stops naming the rule: ast-grep itself exits 0 on zero matches. `scripts/sgconfig.yml` makes `.h`
+  C++ (ast-grep reads it as C). Deletions use `fix: ''` and leave blank lines; only the code has to match.
   gcc is `update = none`: a plain `submodule update --init`, as `actions/checkout` runs, skips it, because a full checkout pulls the whole gcc tree. The CI cache
   saves the tree already patched and never re-saves on a key hit, so without the
-  reset an edited or removed patch stays as first cached. `patch()` fails on a hunk
+  reset an edited or removed patch stays as first cached. `patch()` (now only the lld CMake list,
+  which has no ast-grep grammar and no `-D` option) fails on a hunk
   applied at an offset: `git apply` exits 0 and says so only under `-v`.
 - `JOBS` is 8, not nproc, and `LLVM_PARALLEL_LINK_JOBS=1`. Link steps eat
   memory, dev box has ~10 GB free.

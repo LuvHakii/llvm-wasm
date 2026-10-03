@@ -1,0 +1,27 @@
+id: lld-drop-drivers
+language: cpp
+files: [lld/tools/lld/lld.cpp]
+metadata: { expect: 4 }
+rule: { pattern: LLD_HAS_DRIVER($D) }
+constraints: { D: { regex: '^(coff|elf|mingw|macho)$' } }
+fix: ''
+---
+id: lld-wasm-only-table
+language: cpp
+files: [lld/tools/lld/lld.cpp]
+metadata: { expect: 1 }
+rule: { pattern: LLD_HAS_DRIVER(wasm) }
+fix: |-
+  LLD_HAS_DRIVER(wasm)
+
+  static const lld::DriverDef wasmOnly[] = {{lld::Wasm, &lld::wasm::link}};
+---
+id: lld-use-wasm-only
+language: cpp
+files: [lld/tools/lld/lld.cpp]
+metadata: { expect: 2 }
+rule:
+  kind: identifier
+  regex: ^LLD_ALL_DRIVERS$
+  inside: { stopBy: end, kind: function_definition, has: { field: declarator, regex: '^lld_main\(' } }
+fix: wasmOnly

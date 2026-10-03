@@ -1,16 +1,8 @@
 import {$} from "bun";
 import {cpSync, mkdirSync} from "node:fs";
-import {BUILD, COMMON_CMAKE, EMSDK, JOBS, LTO_FLAGS, REPO, emenv, patch} from "./common.ts";
+import {BUILD, COMMON_CMAKE, EMSDK, JOBS, LTO_FLAGS, REPO, emenv} from "./common.ts";
 
 const env = await emenv();
-
-await patch("clangd-transport.patch");
-await patch("clangd-pch.patch");
-await patch("clang-tidy-trim.patch");
-await patch("clang-trim.patch");
-await patch("clang-driver-wasm-only.patch");
-await patch("clangd-no-modules.patch");
-await patch("clangd-no-banner.patch");
 
 const api = new Function(`${await Bun.file(`${EMSDK}/upstream/emscripten/src/settings.js`).text()}; return INCOMING_MODULE_JS_API`)();
 
