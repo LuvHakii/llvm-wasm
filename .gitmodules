@@ -11,3 +11,6 @@
 	url = https://github.com/gcc-mirror/gcc.git
 	shallow = true
 	update = none
+[submodule "wasi-libc-patches"]
+	path = wasi-libc-patches
+	url = https://github.com/LuvHakii/wasi-libc-patches

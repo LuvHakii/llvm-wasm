@@ -1,4 +1,4 @@
-import {ConsoleStdout, WASI} from "@bjorn3/browser_wasi_shim";
+import {ConsoleStdout, Directory, File, PreopenDirectory, WASI} from "@bjorn3/browser_wasi_shim";
 import {resolve} from "node:path";
 import {parseTar} from "nanotar";
 
@@ -160,6 +160,29 @@ int main(void) {
 await check("sigaction", async () => {
 	const cc = await tool("clang", [...BASE, "-D_WASI_EMULATED_SIGNAL", "-c", "/s.c", "-o", "/main.o"], {"/s.c": SIGACTION}, "/main.o");
 	await run((await link(cc.file, ["-lwasi-emulated-signal"])).file, {});
+	return {};
+});
+
+const CWD = `#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+int main(void) {
+	char b[64];
+	if (!getcwd(b, sizeof b) || strcmp(b, "/work")) return 1;
+	FILE *f = fopen("in.txt", "r");
+	if (!f) return 2;
+	return fgetc(f) == 'x' ? 0 : 3;
+}
+`;
+await check("cwd", async () => {
+	const cc = await tool("clang", [...BASE, "-c", "/c.c", "-o", "/main.o"], {"/c.c": CWD}, "/main.o");
+	const bin = (await link(cc.file)).file;
+	const root = new PreopenDirectory("/", new Map([["work", new Directory(new Map([["in.txt", new File(new TextEncoder().encode("x"))]]))]]));
+	const sink = ConsoleStdout.lineBuffered(() => {});
+	const wasi = new WASI(["main.wasm"], ["PWD=/work"], [sink, sink, sink, root], {debug: false});
+	const {instance} = await WebAssembly.instantiate(bin, {wasi_snapshot_preview1: wasi.wasiImport});
+	const code = wasi.start(instance as any);
+	if (code !== 0) throw {exit: code};
 	return {};
 });
 

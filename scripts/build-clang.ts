@@ -67,6 +67,12 @@ const emclang = `${EMSDK}/upstream/bin`;
 await $`${emclang}/clang --target=wasm32-wasip1 --sysroot=${SLIM} -O2 -c ${REPO}/sysroot/tty.c -o ${ROOT}/tty.o`;
 await $`${emclang}/llvm-ar rcs ${LIB}/libtty.a ${ROOT}/tty.o`;
 
+const cwd = `${REPO}/wasi-libc-patches`;
+await $`${cwd}/scripts/build.sh`.env({...process.env, CC: `${emclang}/clang`});
+for (const crt of ["crt1.o", "crt1-command.o"]) {
+	await $`${cwd}/scripts/merge.sh ${LIB}/${crt} ${cwd}/dist/cwd-wasm32-wasip1.o`.env({...process.env, WASM_LD: `${emclang}/wasm-ld`});
+}
+
 const RT = `${ROOT}/libclang_rt-${WASI_SDK_VER}/wasm32-unknown-wasi/libclang_rt.builtins.a`;
 if (!existsSync(RT)) await extractTar(`https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_MAJOR}/libclang_rt-${WASI_SDK_VER}.tar.gz`, ROOT);
 cpSync(RT, `${LIB}/libclang_rt.builtins.a`);
