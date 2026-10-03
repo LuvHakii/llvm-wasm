@@ -16,9 +16,7 @@ permissions:
   contents: write
 
 env:
-  ROOT: /home/runner/llvm-build
   JOBS: 4
-  CCACHE_DIR: /home/runner/.cache/ccache
 
 jobs:
   toolchain:
@@ -51,7 +49,6 @@ jobs:
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
-          key: llvm-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}
           max-size: 4G
 
       - name: restore ThinLTO cache
