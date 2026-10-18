@@ -18,17 +18,10 @@ export const NATIVE = `${ROOT}/stage1`;
 export const BUILD = `${ROOT}/stage2`;
 export const LTO_FLAGS = `-Wl,--thinlto-cache-dir=${ROOT}/lto.cache -Wl,--thinlto-cache-policy=cache_size_bytes=3g:prune_after=0s`;
 
-export const COMMON_CMAKE = [
-	"-G", "Ninja", "-S", `${SRC}/llvm`,
+export const BASE_CMAKE = [
+	"-G", "Ninja",
 	"-DCMAKE_CXX_FLAGS=-pthread -Dwait4=__syscall_wait4",
 	"-DCMAKE_BUILD_TYPE=MinSizeRel",
-	"-DLLVM_TARGET_ARCH=wasm32-emscripten",
-	"-DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-wasip1",
-	"-DLLVM_TARGETS_TO_BUILD=WebAssembly",
-	"-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;lld",
-	`-DLLVM_TABLEGEN=${NATIVE}/bin/llvm-tblgen`,
-	`-DCLANG_TABLEGEN=${NATIVE}/bin/clang-tblgen`,
-	`-DCLANG_TIDY_CONFUSABLE_CHARS_GEN=${NATIVE}/bin/clang-tidy-confusable-chars-gen`,
 	"-DLLVM_BUILD_STATIC=ON",
 	"-DLLVM_INCLUDE_EXAMPLES=OFF",
 	"-DLLVM_INCLUDE_TESTS=OFF",
@@ -45,6 +38,18 @@ export const COMMON_CMAKE = [
 	...(Bun.which("ccache") ? ["-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"] : []),
 ];
 
+export const COMMON_CMAKE = [
+	...BASE_CMAKE,
+	"-S", `${SRC}/llvm`,
+	"-DLLVM_TARGET_ARCH=wasm32-emscripten",
+	"-DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-wasip1",
+	"-DLLVM_TARGETS_TO_BUILD=WebAssembly",
+	"-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;lld",
+	`-DLLVM_TABLEGEN=${NATIVE}/bin/llvm-tblgen`,
+	`-DCLANG_TABLEGEN=${NATIVE}/bin/clang-tblgen`,
+	`-DCLANG_TIDY_CONFUSABLE_CHARS_GEN=${NATIVE}/bin/clang-tidy-confusable-chars-gen`,
+];
+
 export function llvmVer() {
 	const s = readFileSync(`${SRC}/cmake/Modules/LLVMVersion.cmake`, "utf8");
 	return ["MAJOR", "MINOR", "PATCH"].map(k => s.match(new RegExp(`set\\(LLVM_VERSION_${k} (\\d+)\\)`))![1]).join(".");
@@ -55,7 +60,7 @@ export function emsdkVer(): string {
 }
 
 export async function emenv() {
-	const raw = await $`bash -c 'source ${EMSDK}/emsdk_env.sh >/dev/null 2>&1; env -0'`.text();
+	const raw = await $`bash -c 'source "$1" >/dev/null 2>&1 && env -0' bash ${`${EMSDK}/emsdk_env.sh`}`.text();
 	const env: Record<string, string> = {};
 	for (const line of raw.split("\0")) {
 		const i = line.indexOf("=");

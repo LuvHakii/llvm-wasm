@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# apply-rules.sh <src> <rules.yml>...: each rule must match exactly `metadata: { expect: N }` times, then all apply.
-# Scans from <src>, so `files:` globs in rules are relative to the upstream root. Only the `files: [...]` paths are
-# scanned: a scan of `.` parses all of llvm-project (~140 CPU-s) for the same matches. sgconfig.yml reads .h as C++.
 set -eo pipefail
 SG=${SG:-npx -y -p @ast-grep/cli@0.45.3 ast-grep}
 cfg=$(realpath "$(dirname "$0")/sgconfig.yml")

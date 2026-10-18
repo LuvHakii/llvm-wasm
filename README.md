@@ -44,6 +44,22 @@ bun scripts/gen-pch.ts ./dist   # five stdc++ PCHs + compile/link/run gate, no b
 bun test/clangd.ts ./dist       # clangd LSP gate, Chromium
 ```
 
+Run `bun test test/common.test.ts` for SDK environment checks and `bunx --bun tsc --noEmit` for TypeScript checks. SDK activation must succeed before a build starts, including when the checkout path contains spaces.
+
+### x86-64 assembly compiler
+
+Use a separate build root. Setup creates a clean detached worktree at the pinned LLVM commit; it refuses an existing worktree with changes or a different commit. No WebAssembly-only source patches, WASI sysroot, runtime libraries or PCHs enter this build. The header archive contains libc++ from that LLVM commit, configured for musl, musl 1.2.5 x86-64 C headers, Clang core/x86 intrinsic headers, and the existing `<bits/stdc++.h>` umbrella.
+
+```bash
+ROOT=$HOME/llvm-x86-asm-build bun scripts/setup-x86-asm.ts
+ROOT=$HOME/llvm-x86-asm-build bun scripts/build-x86-asm.ts
+bun test/x86-asm.ts ./dist-x86-asm
+```
+
+`dist-x86-asm/clang-x86-asm.{js,wasm,d.ts}` and `dist-x86-asm/clang-x86-asm.headers.tar` form a separate lazy-loaded browser compiler. Extract the header archive at `/` in each private compiler filesystem before invoking `clang-x86-asm <source-path> <compiler-options...>`; it creates `/x86-asm`, including fixed system include directories and license notices. It emits Intel assembly to `/x86-asm/output.s` with source-line metadata. Ordinary Clang optimization, warning, include, macro, C++ standard, explicit CPU and tuning flags are supported. `-masm=att` selects AT&T syntax. The viewer owns the C++ input, x86_64 Linux target, assembly stage and output path. Native CPU detection is unavailable; select an explicit CPU. Source-location metadata remains enabled even with `-g0`. Standard-library calls can remain external symbols: this tool does not link or execute programs.
+
+The `build` workflow runs the normal toolchain and assembly builds in parallel. Assembly verification downloads the build artifact and exercises those exact bytes. With `release=false`, neither path publishes. With `release=true`, one final job publishes both verified toolchains in the same timestamp-tagged release; existing tags are never overwritten. The standalone `build assembly` workflow builds and verifies artifacts only. Assembly downloads must pin the shared release containing these assets.
+
 ## Measured
 
 2026-08-10, stock wasi-sdk 33 (clang 22.1.0), before our own LLVM build existed.
@@ -116,8 +132,9 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   offload toolchain from the triple at runtime, so LTO keeps all 68. The rules
   always returns the WebAssembly toolchain, makes offloading (CUDA, HIP, SYCL,
   OpenMP) a fatal error and turns off `-fmodules-driver`. A non-wasm `--target`
-  silently gets WebAssembly's paths. `clangd-no-modules.yml` drops clangd's C++20
-  module scanning: one file, nothing to import, no `std.cppm` in the sysroot.
+  silently gets WebAssembly's paths.
+- `patches/clangd-no-modules.yml` drops clangd's C++20 module scanning: one file,
+  nothing to import, no `std.cppm` in the sysroot.
 - `patches/clangd-no-banner.yml` drops clangd's whole startup banner: the usage text
   it prints to stderr when stdout and stderr both look like a terminal, and the
   startup logs (version, features, PID, working directory, argv, `CLANGD_FLAGS`,
@@ -126,7 +143,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   (`-fexperimental-new-constant-interpreter`, off by default, ~1.4 MB each) becomes a
   fatal error, and target builtin codegen handles WebAssembly only (0.49 MB, every
   arch's `Emit*BuiltinExpr` inlined into one function).
-- `patches/lld-wasm-only.yml` + `.patch` (CMake link list): lld links its ELF, COFF, MachO and MinGW drivers
+- `patches/lld-wasm-only.patch` (CMake link list) + `patches/lld-wasm-only.yml`: lld links its ELF, COFF, MachO and MinGW drivers
   and picks one by `argv[0]` at runtime, so LTO keeps all of them. Only `wasm-ld`
   runs here.
 - `wasm-ld --threads=1`. lld is linked `-pthread` with no `PTHREAD_POOL_SIZE`,
@@ -148,6 +165,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   the sysroot fresh per instance, new mtimes, so clang rejects any PCH built by
   another one: *"mtime changed"*. Skip the flag and every PCH is dead weight.
   `gen-pch.ts` compiles, links and runs a probe with each one before writing it.
+  A nonzero compiler or linker exit fails the gate even if it wrote an output file.
 - clangd drops `-include-pch` upstream (`Compiler.cpp` clears `ImplicitPCHInclude`),
   so every file open re-parsed libc++: 26.5 MB preamble, 4-8 s.
   `patches/clangd-pch.yml` keeps it; the preamble chains onto the PCH: 54 KB,

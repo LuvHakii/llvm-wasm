@@ -1,0 +1,82 @@
+name: build assembly
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: build-x86-asm-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      JOBS: 4
+      ROOT: /home/runner/llvm-x86-asm-build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@v2
+      - name: versions
+        id: versions
+        run: bun scripts/common.ts >> "$GITHUB_OUTPUT"
+      - name: cache assembly emsdk and stage1
+        uses: actions/cache@v4
+        with:
+          path: |
+            emsdk
+            /home/runner/llvm-x86-asm-build/stage1
+          key: x86-asm-${{ steps.versions.outputs.LLVM_VER }}-${{ steps.versions.outputs.EMSDK_VER }}-${{ hashFiles('scripts/setup-x86-asm.ts', 'scripts/common.ts') }}
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2.24
+        with:
+          key: x86-asm
+          max-size: 4G
+      - name: restore assembly ThinLTO cache
+        id: lto
+        uses: actions/cache/restore@v4
+        with:
+          path: /home/runner/llvm-x86-asm-build/lto.cache
+          key: x86-asm-lto-${{ steps.versions.outputs.LLVM_VER }}-${{ steps.versions.outputs.EMSDK_VER }}-${{ hashFiles('scripts/build-x86-asm.ts', 'scripts/common.ts', 'x86-asm/**') }}-${{ github.sha }}
+          restore-keys: x86-asm-lto-${{ steps.versions.outputs.LLVM_VER }}-${{ steps.versions.outputs.EMSDK_VER }}-${{ hashFiles('scripts/build-x86-asm.ts', 'scripts/common.ts', 'x86-asm/**') }}-
+      - name: test SDK environment
+        run: bun test test/common.test.ts
+      - name: setup assembly compiler
+        run: bun scripts/setup-x86-asm.ts
+      - name: build assembly compiler
+        run: bun scripts/build-x86-asm.ts
+      - name: save assembly ThinLTO cache
+        if: always() && steps.lto.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /home/runner/llvm-x86-asm-build/lto.cache
+          key: x86-asm-lto-${{ steps.versions.outputs.LLVM_VER }}-${{ steps.versions.outputs.EMSDK_VER }}-${{ hashFiles('scripts/build-x86-asm.ts', 'scripts/common.ts', 'x86-asm/**') }}-${{ github.sha }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x86-asm-${{ github.sha }}
+          path: |
+            dist-x86-asm/clang-x86-asm.js
+            dist-x86-asm/clang-x86-asm.wasm
+            dist-x86-asm/clang-x86-asm.d.ts
+            dist-x86-asm/clang-x86-asm.headers.tar
+          if-no-files-found: error
+          retention-days: 7
+
+  verify:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: x86-asm-${{ github.sha }}
+          path: dist-x86-asm
+      - name: verify downloaded compiler and report sizes
+        run: bun test/x86-asm.ts ./dist-x86-asm

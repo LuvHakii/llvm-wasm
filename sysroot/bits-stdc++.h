@@ -1,4 +1,3 @@
-// bits/stdc++.h shim for libc++ (generated)
 #pragma once
 #include <cassert>
 #include <cctype>

@@ -17,7 +17,7 @@ const SYSROOT = [
 	...parseTar(await Bun.file(`${DIST}/lib.tar`).arrayBuffer()),
 ];
 
-async function tool(name: string, args: string[], files: Record<string, any>, out: string) {
+async function tool(name: string, args: string[], files: Record<string, string | Uint8Array>, out: string) {
 	let err = "";
 	const m = await Llvm({
 		thisProgram: `/usr/bin/${name}`, noInitialRun: true,
@@ -31,11 +31,14 @@ async function tool(name: string, args: string[], files: Record<string, any>, ou
 	const t = performance.now();
 	let code = 0;
 	try { code = m.callMain(args) ?? 0; }
-	catch (e: any) { code = e?.status ?? -1; }
+	catch (e) {
+		if (e && typeof e === "object" && "status" in e && typeof e.status === "number") code = e.status;
+		else throw e;
+	}
 	const ms = performance.now() - t;
 	try {
 		const file: Uint8Array = m.FS.readFile(out);
-		if (file.length) return {file, ms};
+		if (code === 0 && file.length) return {file, ms};
 	} catch {}
 	throw {tool: name, exit: code, stderr: err.split("\n").filter(l => l).slice(0, 2)};
 }

@@ -11,7 +11,6 @@ id: no-offload-toolchain
 language: cpp
 files: [clang/lib/Driver/Driver.cpp]
 metadata: { expect: 1 }
-# first statement of the body
 rule:
   kind: declaration
   pattern: $S

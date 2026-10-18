@@ -14,7 +14,6 @@ id: wasm-only-builtins
 language: cpp
 files: [clang/lib/CodeGen/CGBuiltin.cpp]
 metadata: { expect: 1 }
-# first node of the body (a comment upstream)
 rule:
   kind: comment
   pattern: $F
