@@ -45,8 +45,10 @@ jobs:
           path: /home/runner/llvm-x86-asm-build/lto.cache
           key: x86-asm-lto-${{ steps.versions.outputs.LLVM_VER }}-${{ steps.versions.outputs.EMSDK_VER }}-${{ hashFiles('scripts/build-x86-asm.ts', 'scripts/common.ts', 'x86-asm/**') }}-${{ github.sha }}
           restore-keys: x86-asm-lto-${{ steps.versions.outputs.LLVM_VER }}-${{ steps.versions.outputs.EMSDK_VER }}-${{ hashFiles('scripts/build-x86-asm.ts', 'scripts/common.ts', 'x86-asm/**') }}-
-      - name: test SDK environment
-        run: bun test test/common.test.ts
+      - name: install dependencies
+        run: |
+          bun install --frozen-lockfile
+          bun test test/common.test.ts
       - name: setup assembly compiler
         run: bun scripts/setup-x86-asm.ts
       - name: build assembly compiler
