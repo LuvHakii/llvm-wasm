@@ -44,7 +44,7 @@ bun scripts/gate.ts ./dist      # compile/link/run, tty, sigaction, cwd gate, no
 bun test/clangd.ts ./dist       # clangd LSP gate, Chromium
 ```
 
-Run `bun test test/common.test.ts` for SDK environment checks and `bunx --bun tsc --noEmit` for TypeScript checks. SDK activation must succeed before a build starts, including when the checkout path contains spaces.
+Run `bun test test/common.test.ts` for SDK environment checks and `bun check` for TypeScript checks. SDK activation must succeed before a build starts, including when the checkout path contains spaces.
 
 ### x86-64 assembly compiler
 

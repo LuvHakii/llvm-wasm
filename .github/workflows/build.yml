@@ -67,7 +67,7 @@ jobs:
           bunx --bun playwright install --with-deps chromium
 
       - name: typecheck
-        run: bunx --bun tsc --noEmit
+        run: bun check
 
       - name: setup
         run: bun scripts/setup.ts
