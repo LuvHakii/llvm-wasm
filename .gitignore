@@ -1,7 +1,5 @@
 dist/
 dist-x86-asm/
-*.pch
-*.pch.gz
 *.wasm
 *.log
 node_modules

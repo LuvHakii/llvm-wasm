@@ -19,7 +19,7 @@ For gcc, which `setup.ts` checks out sparse, set the pointer directly:
 llvm-project/        upstream source, shallow submodule
 emsdk/               Emscripten SDK, shallow submodule; setup.ts installs its pinned release into it
 gcc/                 gcc-mirror, update = none; setup.ts fetches only libstdc++-v3/include/ext/pb_ds
-scripts/             build pipeline (Bun TS): setup, clangd, clang multicall, PCHs + gate
+scripts/             build pipeline (Bun TS): setup, clangd, clang multicall, gate
 sysroot/             additions to include.tar / lib.tar: bits/stdc++.h, tty.patch, tty.c
 patches/             LLVM edits: ast-grep rules (*.yml, each with an expected match count), lld CMake .patch
 test/                clangd LSP gate in Chromium
@@ -40,7 +40,7 @@ $ROOT/lto.cache      ThinLTO link cache (3 GB cap), shared by both links
 bun scripts/setup.ts            # submodules, patches/*.yml, gcc pb_ds, emsdk install, wasi-sysroot, native tblgen
 bun scripts/build-clangd.ts     # clangd
 bun scripts/build-clang.ts      # llvm multicall (clang, wasm-ld), include.tar, lib.tar
-bun scripts/gen-pch.ts ./dist   # five stdc++ PCHs + compile/link/run gate, no browser
+bun scripts/gate.ts ./dist      # compile/link/run, tty, sigaction, cwd gate, no browser
 bun test/clangd.ts ./dist       # clangd LSP gate, Chromium
 ```
 
@@ -61,37 +61,6 @@ bun test/x86-asm.ts ./dist-x86-asm
 The `build` workflow runs the normal toolchain and assembly builds in parallel. Assembly verification downloads the build artifact and exercises those exact bytes. With `release=false`, neither path publishes. With `release=true`, one final job publishes both verified toolchains in the same timestamp-tagged release; existing tags are never overwritten. The standalone `build assembly` workflow builds and verifies artifacts only. Assembly downloads must pin the shared release containing these assets.
 
 ## Measured
-
-2026-08-10, stock wasi-sdk 33 (clang 22.1.0), before our own LLVM build existed.
-
-| program | with PCH |
-|---|---|
-| `<bits/stdc++.h>` + vector/sort/cout | 8.1x faster |
-| compile only (no link) | 9.5x faster |
-| `<iostream>` hello world | 10.3x faster |
-
-Binaries byte-identical either way. Front-end only.
-
-Sizes stay absolute below, since what matters is the Cloudflare Pages 25 MiB
-per-file cap, not a ratio.
-
-| standard | PCH gzip | gen, vs c++11 |
-|---|---|---|
-| c++11 | 9.91 MiB | 1.0x |
-| c++14 | 10.40 MiB | 1.0x |
-| c++17 | 12.13 MiB | 1.2x |
-| c++20 | 16.11 MiB | 1.9x |
-| c++23 | 18.30 MiB | 2.3x |
-
-Raw c++20 and c++23 blow the cap, gzipped they fit. 66.9 MiB across all five,
-a user fetches one.
-
-A shipped PCH serves any `-O*`, `-g*`, `-W*` and `-D`/`-U` (except `_LIBCPP_*`):
-codegen comes from the consuming compile. A flag that changes how the headers compile
-(`-funsigned-char`, `-fno-builtin`, `-fno-sized-deallocation`,
-`-fno-aligned-allocation`, `-ffast-math`, `-D_LIBCPP_*`, ...) silently gets the PCH's
-behaviour instead; the host generates a matching PCH with the `gen-pch.ts` command plus
-those flags (c++20: 5 s, 191 MB peak).
 
 99 of 104 candidate headers compile, identically at c++11 through c++23, since
 libc++ 22 guards the newer ones internally. One shim, every standard. Missing:
@@ -157,21 +126,21 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   *"module uses a mix of legacy and new exception handling instructions"*.
 - `-lunwind` with `-fwasm-exceptions`, not auto-linked. Without it:
   `undefined symbol: _Unwind_RaiseException`.
-- PCH must come from the `llvm.wasm` just built. clang validates a PCH against
-  the compiler build, so host-generated ones die at `-include-pch`.
+- No PCH is shipped. The host generates its own, and it must come from the `llvm.wasm`
+  just built: clang validates a PCH against the compiler build, so one from another
+  build dies at `-include-pch`.
 - `-include-pch` still needs the textual `#include <bits/stdc++.h>` to resolve,
   then it no-ops via `#pragma once`. The shim sits in `include/c++/v1/bits`.
 - `-Xclang -fno-validate-pch` in every consumer. The host mounts
   the sysroot fresh per instance, new mtimes, so clang rejects any PCH built by
   another one: *"mtime changed"*. Skip the flag and every PCH is dead weight.
-  `gen-pch.ts` compiles, links and runs a probe with each one before writing it.
-  A nonzero compiler or linker exit fails the gate even if it wrote an output file.
+- `gate.ts` fails on a nonzero compiler or linker exit even if it wrote an output file.
 - clangd drops `-include-pch` upstream (`Compiler.cpp` clears `ImplicitPCHInclude`),
   so every file open re-parsed libc++: 26.5 MB preamble, 4-8 s.
   `patches/clangd-pch.yml` keeps it; the preamble chains onto the PCH: 54 KB,
   under 1 s. Its flags must match the PCH's, same rule as clang.
 - clang and lld never share a page or worker. Both at once crashed Chromium at
-  any `INITIAL_MEMORY`. One multicall binary now, `gen-pch.ts` still gives
+  any `INITIAL_MEMORY`. One multicall binary now, `gate.ts` still gives
   each its own instance.
 - Emscripten has no `fork`/`exec`, clang cannot spawn `wasm-ld`. No LLVM patch
   needed: run clang `-###`, it prints the commands it would run, then `callMain`
@@ -198,9 +167,9 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
 - `__gnu_pbds` on libc++: GCC's `ext/pb_ds` and `ext/typelist.h` go into
   `include/c++/v1/ext`, and `sysroot/libstdcxx-shim.h` is copied to the six libstdc++
   headers they include. `-D_GLIBCXX_DEBUG` breaks it: the debug path wants
-  `ext/throw_allocator.h`. Not in `bits/stdc++.h`, same as GCC, but the PCHs carry it:
-  `gen-pch.ts` adds `-include ext/pb_ds/*.hpp`, +2.5 MB raw (+1.1 MB brotli) each, and a
-  pb_ds program compiles 2x faster. Code that never names `__gnu_pbds` sees no difference.
+  `ext/throw_allocator.h`. Not in `bits/stdc++.h`, same as GCC: include
+  `ext/pb_ds/*.hpp` explicitly, or in the host PCH (+2.5 MB raw, +1.1 MB brotli, and a
+  pb_ds program compiles 2x faster). Code that never names `__gnu_pbds` sees no difference.
 - No clang-format binary. clangd formats (`textDocument/formatting`, range and
   on-type) with the same library and reads `.clang-format`.
 - ThinLTO (`LLVM_ENABLE_LTO=Thin`) on both builds. `Release` (-O2) blows the size
@@ -253,7 +222,7 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   adds `libtty.a` (`__wrap_ioctl`, from `sysroot/tty.c`). Link with `-ltty
   --wrap=ioctl`; the host must provide wasm imports `tty.tcgets`, `tty.tcsets` and
   `tty.winsize`. The wire layout is musl `struct termios`: `c_cc` at offset 17, 60
-  bytes total. `gen-pch.ts` checks it.
+  bytes total. `gate.ts` checks it.
 
 ## Credits
 

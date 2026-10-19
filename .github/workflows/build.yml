@@ -85,10 +85,8 @@ jobs:
           path: /home/runner/llvm-build/lto.cache
           key: lto-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ github.sha }}
 
-      - name: "PCHs, gate: compile + link + run, tty"
-        run: |
-          bun scripts/gen-pch.ts ./dist
-          ls -la dist/pch/
+      - name: "gate: compile + link + run, tty"
+        run: bun scripts/gate.ts ./dist
 
       - name: "gate: clangd LSP"
         run: bun test/clangd.ts ./dist
@@ -99,7 +97,7 @@ jobs:
           for t in clangd-jspi clangd-asyncify llvm; do
             cp dist/$t.js dist/$t.d.ts dist/$t.wasm release/
           done
-          cp dist/include.tar dist/lib.tar dist/pch/*.pch release/
+          cp dist/include.tar dist/lib.tar release/
           printf '{"llvm":"%s","emscripten":"%s","wasiSdk":"%s"}' \
             "$LLVM_VER" "$EMSDK_VER" "$WASI_SDK_VER" > release/versions.json
           ls -la release/
