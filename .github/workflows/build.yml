@@ -64,7 +64,6 @@ jobs:
         run: |
           bun install --frozen-lockfile
           bun test test/common.test.ts
-          bunx --bun playwright install --with-deps chromium
 
       - name: typecheck
         run: bun check
@@ -85,12 +84,6 @@ jobs:
           path: /home/runner/llvm-build/lto.cache
           key: lto-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ github.sha }}
 
-      - name: "gate: compile + link + run, tty"
-        run: bun scripts/gate.ts ./dist
-
-      - name: "gate: clangd LSP"
-        run: bun test/clangd.ts ./dist
-
       - name: stage release
         run: |
           mkdir -p release
@@ -110,11 +103,106 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  assembly:
-    uses: ./.github/workflows/build-x86-asm.yml
+  asm-toolchain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      ROOT: /home/runner/llvm-x86-asm-build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: versions
+        run: bun scripts/common.ts >> "$GITHUB_ENV"
+
+      - name: cache emsdk + stage1
+        uses: actions/cache@v4
+        with:
+          path: |
+            emsdk
+            /home/runner/llvm-x86-asm-build/stage1
+          key: x86-asm-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ hashFiles('scripts/setup-x86-asm.ts', 'scripts/common.ts') }}
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2.24
+        with:
+          key: x86-asm
+          max-size: 4G
+
+      - name: restore ThinLTO cache
+        id: lto
+        uses: actions/cache/restore@v4
+        with:
+          path: /home/runner/llvm-x86-asm-build/lto.cache
+          key: x86-asm-lto-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ hashFiles('scripts/build-x86-asm.ts', 'scripts/common.ts', 'x86-asm/**') }}-${{ github.sha }}
+          restore-keys: x86-asm-lto-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ hashFiles('scripts/build-x86-asm.ts', 'scripts/common.ts', 'x86-asm/**') }}-
+
+      - name: install deps
+        run: |
+          bun install --frozen-lockfile
+          bun test test/common.test.ts
+
+      - name: setup
+        run: bun scripts/setup-x86-asm.ts
+
+      - name: build
+        run: bun scripts/build-x86-asm.ts
+
+      - name: save ThinLTO cache
+        if: always() && steps.lto.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /home/runner/llvm-x86-asm-build/lto.cache
+          key: x86-asm-lto-${{ env.LLVM_VER }}-${{ env.EMSDK_VER }}-${{ hashFiles('scripts/build-x86-asm.ts', 'scripts/common.ts', 'x86-asm/**') }}-${{ github.sha }}
+
+      - name: upload asm toolchain
+        uses: actions/upload-artifact@v4
+        with:
+          name: x86-asm-${{ github.sha }}
+          path: |
+            dist-x86-asm/clang-x86-asm.js
+            dist-x86-asm/clang-x86-asm.wasm
+            dist-x86-asm/clang-x86-asm.d.ts
+          if-no-files-found: error
+          retention-days: 7
+
+  verify:
+    needs: [toolchain, asm-toolchain]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: install deps
+        run: |
+          bun install --frozen-lockfile
+          bunx --bun playwright install --with-deps chromium
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: toolchain-${{ github.sha }}
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: x86-asm-${{ github.sha }}
+          path: dist-x86-asm
+
+      - name: "gate: compile + link + run, tty"
+        run: bun scripts/gate.ts ./dist
+
+      - name: "gate: clangd LSP"
+        run: bun test/clangd.ts ./dist
+
+      - name: "gate: x86 assembly"
+        run: bun test/x86-asm.ts ./dist-x86-asm
 
   release:
-    needs: [toolchain, assembly]
+    needs: [toolchain, asm-toolchain, verify]
     if: inputs.release
     runs-on: ubuntu-latest
     permissions:
