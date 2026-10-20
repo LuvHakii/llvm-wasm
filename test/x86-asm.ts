@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import {resolve} from "node:path";
-import {brotliCompressSync} from "node:zlib";
 
 const dist = resolve(process.argv[2] ?? "./dist-x86-asm");
 const {default: factory} = await import(`${dist}/clang-x86-asm.js`);
@@ -44,7 +43,3 @@ assert.match(standard.assembly, /^fill:/m);
 assert.match(standard.assembly, /\bmemset\b/);
 assert.match(standard.assembly, /\b_Z3sum/);
 console.log("Assembly smoke passed: x86-64, standard headers, Intel syntax, alternate target rejected");
-for (const name of ["clang-x86-asm.js", "clang-x86-asm.wasm"]) {
-	const bytes = await Bun.file(`${dist}/${name}`).bytes();
-	console.log(`${name}: raw=${bytes.length} Brotli=${brotliCompressSync(bytes).length} bytes`);
-}

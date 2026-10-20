@@ -79,5 +79,5 @@ jobs:
         with:
           name: x86-asm-${{ github.sha }}
           path: dist-x86-asm
-      - name: verify downloaded compiler and report sizes
+      - name: verify downloaded compiler
         run: bun test/x86-asm.ts ./dist-x86-asm
