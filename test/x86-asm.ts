@@ -5,7 +5,6 @@ import {brotliCompressSync} from "node:zlib";
 const dist = resolve(process.argv[2] ?? "./dist-x86-asm");
 const {default: factory} = await import(`${dist}/clang-x86-asm.js`);
 const wasmBinary = await Bun.file(`${dist}/clang-x86-asm.wasm`).arrayBuffer();
-const headers = await new Bun.Archive(await Bun.file(`${dist}/clang-x86-asm.headers.tar`).bytes()).files();
 
 async function compile(flags: string[], source = 'static_assert(sizeof(void*) == 8);\nextern "C" int square(int x) { return x * x; }\n') {
 	let diagnostics = "";
@@ -14,11 +13,6 @@ async function compile(flags: string[], source = 'static_assert(sizeof(void*) ==
 		print: (line: string) => { diagnostics += line + "\n"; },
 		printErr: (line: string) => { diagnostics += line + "\n"; },
 	});
-	module.FS.mkdirTree("/x86-asm");
-	for (const [name, file] of headers) {
-		module.FS.mkdirTree(`/${name.slice(0, name.lastIndexOf("/"))}`);
-		module.FS.writeFile(`/${name}`, await file.bytes());
-	}
 	module.FS.writeFile("/square.cpp", source);
 	let code = 0;
 	try { code = module.callMain(["/square.cpp", ...flags]) ?? 0; }
@@ -50,7 +44,7 @@ assert.match(standard.assembly, /^fill:/m);
 assert.match(standard.assembly, /\bmemset\b/);
 assert.match(standard.assembly, /\b_Z3sum/);
 console.log("Assembly smoke passed: x86-64, standard headers, Intel syntax, alternate target rejected");
-for (const name of ["clang-x86-asm.js", "clang-x86-asm.wasm", "clang-x86-asm.headers.tar"]) {
+for (const name of ["clang-x86-asm.js", "clang-x86-asm.wasm"]) {
 	const bytes = await Bun.file(`${dist}/${name}`).bytes();
 	console.log(`${name}: raw=${bytes.length} Brotli=${brotliCompressSync(bytes).length} bytes`);
 }

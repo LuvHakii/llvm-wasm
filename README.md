@@ -48,7 +48,7 @@ Run `bun test test/common.test.ts` for SDK environment checks and `bun check` fo
 
 ### x86-64 assembly compiler
 
-Use a separate build root. Setup creates a clean detached worktree at the pinned LLVM commit; it refuses an existing worktree with changes or a different commit. No WebAssembly-only source patches, WASI sysroot, runtime libraries or PCHs enter this build. The header archive contains libc++ from that LLVM commit, configured for musl, musl 1.2.5 x86-64 C headers, Clang core/x86 intrinsic headers, and the existing `<bits/stdc++.h>` umbrella.
+Use a separate build root. Setup creates a clean detached worktree at the pinned LLVM commit; it refuses an existing worktree with changes or a different commit. No WebAssembly-only source patches, WASI sysroot, runtime libraries or PCHs enter this build. The wasm embeds a header tree at `/x86-asm` containing libc++ from that LLVM commit, configured for musl, musl 1.2.5 x86-64 C headers, Clang core/x86 intrinsic headers, and the existing `<bits/stdc++.h>` umbrella.
 
 ```bash
 ROOT=$HOME/llvm-x86-asm-build bun scripts/setup-x86-asm.ts
@@ -56,7 +56,7 @@ ROOT=$HOME/llvm-x86-asm-build bun scripts/build-x86-asm.ts
 bun test/x86-asm.ts ./dist-x86-asm
 ```
 
-`dist-x86-asm/clang-x86-asm.{js,wasm,d.ts}` and `dist-x86-asm/clang-x86-asm.headers.tar` form a separate lazy-loaded browser compiler. Extract the header archive at `/` in each private compiler filesystem before invoking `clang-x86-asm <source-path> <compiler-options...>`; it creates `/x86-asm`, including fixed system include directories and license notices. It emits Intel assembly to `/x86-asm/output.s` with source-line metadata. Ordinary Clang optimization, warning, include, macro, C++ standard, explicit CPU and tuning flags are supported. `-masm=att` selects AT&T syntax. The viewer owns the C++ input, x86_64 Linux target, assembly stage and output path. Native CPU detection is unavailable; select an explicit CPU. Source-location metadata remains enabled even with `-g0`. Standard-library calls can remain external symbols: this tool does not link or execute programs.
+`dist-x86-asm/clang-x86-asm.{js,wasm,d.ts}` form a separate lazy-loaded browser compiler. Invoke `clang-x86-asm <source-path> <compiler-options...>` on a fresh instance: each instance starts with `/x86-asm` in its filesystem, holding the fixed system include directories and license notices, so no header archive is mounted. It emits Intel assembly to `/x86-asm/output.s` with source-line metadata. Ordinary Clang optimization, warning, include, macro, C++ standard, explicit CPU and tuning flags are supported. `-masm=att` selects AT&T syntax. The viewer owns the C++ input, x86_64 Linux target, assembly stage and output path. Native CPU detection is unavailable; select an explicit CPU. Source-location metadata remains enabled even with `-g0`. Standard-library calls can remain external symbols: this tool does not link or execute programs.
 
 The `build` workflow runs the normal toolchain and assembly builds in parallel. Assembly verification downloads the build artifact and exercises those exact bytes. With `release=false`, neither path publishes. With `release=true`, one final job publishes both verified toolchains in the same timestamp-tagged release; existing tags are never overwritten. The standalone `build assembly` workflow builds and verifies artifacts only. Assembly downloads must pin the shared release containing these assets.
 
@@ -223,6 +223,11 @@ All live in the scripts or tests. Drop one, the build breaks without saying why.
   --wrap=ioctl`; the host must provide wasm imports `tty.tcgets`, `tty.tcsets` and
   `tty.winsize`. The wire layout is musl `struct termios`: `c_cc` at offset 17, 60
   bytes total. `gate.ts` checks it.
+- `x86-asm/CMakeLists.txt` embeds the `/x86-asm` header tree with `--embed-file` on the
+  `clang-x86-asm` target only: in `CMAKE_EXE_LINKER_FLAGS` it would also embed into every
+  configure link check. Each instance copies the tree out of the wasm, so
+  `scripts/build-x86-asm.ts` deletes libc++'s `__cxx03` (5.7 of 21 MB). libc++ reads it only
+  under `-D_LIBCPP_USE_FROZEN_CXX03_HEADERS`, and `-std=c++03` compiles without it.
 
 ## Credits
 
